@@ -1,0 +1,87 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import Layout from './Layout.astro';
+import EditorHeader from '../components/EditorHeader.astro';
+import EditorStatusline from '../components/EditorStatusline.astro';
+import FormattedDate from '../components/FormattedDate.astro';
+import ArticleAuthors from '../components/ArticleAuthors.astro';
+
+type Props = CollectionEntry<'blog'>['data'] & {
+  slug: string;
+  readingMinutes: number;
+};
+
+const {
+  title,
+  description,
+  pubDate,
+  heroImage,
+  authors,
+  team,
+  tags,
+  slug,
+  readingMinutes,
+} = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
+---
+
+<Layout
+  title={`${title} — Manoj Babu Katragadda`}
+  description={description}
+  image={heroImage}
+  type="article"
+  pubDate={pubDate}
+  authors={authors}
+>
+  <div class="page-frame blog-page-frame">
+    <main class="editor blog-editor" id="main-content">
+      <EditorHeader active="blog" />
+
+      <div class="article-buffer">
+        <aside class="article-rail" aria-hidden="true">
+          <span>01</span><span>02</span><span>03</span><span>04</span><span>05</span><span>06</span><span>07</span><span>08</span>
+        </aside>
+        <article class="article-shell">
+          <nav class="article-breadcrumb" aria-label="Breadcrumb">
+            <a href={base}>~</a><span>/</span><a href={`${base}blog/`}>blog</a><span>/</span><span>{slug}.mdx</span>
+          </nav>
+
+          <header class="article-header">
+            <div class="article-meta">
+              <FormattedDate date={pubDate} />
+              <span>·</span>
+              <span>{readingMinutes} min read</span>
+              <span>·</span>
+              <span>{team}</span>
+            </div>
+            <h1>{title}</h1>
+            <p>{description}</p>
+            <div class="article-tags" aria-label="Topics">
+              {tags.map((tag) => <span>#{tag}</span>)}
+            </div>
+          </header>
+
+          <aside class="provenance-note">
+            <span class="provenance-command" aria-hidden="true">git log --oneline</span>
+            <p>
+              Originally published by ZeroToOne Engineering on <FormattedDate date={pubDate} />.
+              Written by Manoj Babu Katragadda, Principal Platform Engineer · Consultant, and
+              Meghanath Macha, Head of AI.
+            </p>
+          </aside>
+
+          <div class="article-prose">
+            <slot />
+          </div>
+
+          <footer class="article-footer">
+            <ArticleAuthors names={authors} />
+            <a class="article-back" href={`${base}blog/`}><span aria-hidden="true">:e</span> Back to all articles</a>
+          </footer>
+        </article>
+      </div>
+
+      <EditorStatusline file={`blog/${slug}.mdx`} position="Ln 1, Col 1" />
+    </main>
+  </div>
+</Layout>

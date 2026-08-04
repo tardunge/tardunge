@@ -1,0 +1,145 @@
+---
+title: "Building Our Lakehouse with Apache Iceberg"
+description: "A modern lakehouse architecture using Apache Iceberg, Lakekeeper, Spark, Trino, and AWS."
+pubDate: "2026-03-15"
+authors:
+  - "Manoj Babu Katragadda"
+  - "Meghanath Macha"
+team: "Platform Team"
+heroImage: "../../assets/blog/lakehouse-architecture.png"
+tags: ["data-engineering", "iceberg", "lakehouse", "architecture"]
+status: "published"
+---
+
+import { Image } from 'astro:assets';
+import architectureDiagram from '../../assets/blog/lakehouse-architecture.png';
+
+Rigid schemas, expensive compute-storage coupling, and painful migrations eventually expose the limits of a traditional data warehouse. An Apache Iceberg lakehouse separates those concerns while preserving transactional guarantees.
+
+## Why a Lakehouse?
+
+A lakehouse gives you the best of both worlds: the cheap, scalable storage of a data lake with the transactional guarantees and schema management of a warehouse. The key enabler is an **open table format** that sits between your storage and your query engines.
+
+Three table formats were evaluated:
+
+| Format | ACID | Time Travel | Schema Evolution | Community |
+|--------|------|-------------|-----------------|-----------|
+| **Apache Iceberg** | Yes | Yes | Full (add, drop, rename, reorder) | Very active |
+| Delta Lake | Yes | Yes | Add/rename only | Databricks-centric |
+| Apache Hudi | Yes | Limited | Add only | Uber-centric |
+
+Iceberg won because of its **complete schema evolution**, **hidden partitioning** (no need to manage partition columns in queries), and its **open REST catalog spec**, which avoids vendor lock-in.
+
+## The Architecture
+
+The resulting lakehouse stack looks like this:
+
+<Image src={architectureDiagram} alt="Iceberg Lakehouse Architecture — data sources flow through Spark ingestion into S3 with Iceberg table format, served by Spark SQL and Trino query engines to downstream consumers" width={1020} />
+
+### Storage: S3 + Iceberg
+
+All data lives in S3 as **Parquet files**, organized by Iceberg's metadata layer. Iceberg tracks every change as an immutable **snapshot**—a tree of manifest files pointing to data files. That enables:
+
+- **Time travel**: Query any previous version of a table by snapshot ID or timestamp
+- **Atomic commits**: Multi-file writes either fully succeed or fully roll back
+- **Partition evolution**: Change partition schemes without rewriting data
+
+```sql
+-- Query a table as it was yesterday
+SELECT * FROM events
+FOR SYSTEM_TIME AS OF TIMESTAMP '2026-03-14 00:00:00';
+
+-- Roll back a bad write
+CALL system.rollback_to_snapshot('events', 1234567890);
+```
+
+### Catalog: Lakekeeper
+
+The catalog is the brain of the lakehouse: it tracks which tables exist, where their metadata lives, and enforces access control. **Lakekeeper** is an open-source Iceberg REST catalog that implements the [Iceberg REST Catalog Spec](https://iceberg.apache.org/concepts/catalog/).
+
+Lakekeeper provides:
+
+- **REST API** on port 8181 — any Iceberg-compatible engine can connect
+- **Multi-engine support** — Spark, Trino, Flink all talk to the same catalog
+- **Namespace management** — organize tables into logical groups
+- **Access control** — table-level permissions
+
+```python
+# Configure Spark to use Lakekeeper
+spark.conf.set("spark.sql.catalog.lakehouse", "org.apache.iceberg.spark.SparkCatalog")
+spark.conf.set("spark.sql.catalog.lakehouse.type", "rest")
+spark.conf.set("spark.sql.catalog.lakehouse.uri", "http://lakekeeper:8181")
+spark.conf.set("spark.sql.catalog.lakehouse.warehouse", "s3://data-lake/warehouse")
+```
+
+### Query Engines: Spark SQL + Trino
+
+Two query engines operate against the same Iceberg tables:
+
+- **Spark SQL** for heavy analytical workloads, ML feature pipelines, and batch transforms
+- **Trino** for interactive queries, dashboards, and ad-hoc exploration
+
+Both engines read from the same S3 data through the same Lakekeeper catalog. There's no data duplication — just different compute engines optimized for different access patterns.
+
+## Operational Findings
+
+### Hidden partitioning is a game changer
+
+With Iceberg, you define partition transforms at the table level, and queries automatically benefit without users needing to filter on partition columns:
+
+```sql
+-- Iceberg partitions by day(event_time) automatically
+-- This query only scans the relevant day's files
+SELECT * FROM events WHERE event_time > '2026-03-14';
+```
+
+No more `WHERE year=2026 AND month=3 AND day=14` in every query.
+
+### Incremental updates without full rewrites
+
+Iceberg's `overwrite_partitions` mode reprocesses only the partitions that changed, leaving everything else untouched. Combined with snapshot isolation, concurrent readers never see partial writes—they get either the old snapshot or the new one.
+
+### Transactional writes and upserts
+
+Iceberg supports row-level operations like `MERGE INTO`, providing true upsert semantics on a data lake. New rows and updates land in one atomic operation—work that traditionally required a full table rewrite or a complex CDC pipeline over raw Parquet.
+
+### Write-Audit-Publish (WAP)
+
+Write-Audit-Publish (WAP) is one of Iceberg's most useful operational features. It starts with a single table property:
+
+```sql
+ALTER TABLE events SET TBLPROPERTIES ('write.wap.enabled' = 'true');
+```
+
+Rather than writing directly to a table's main branch, a pipeline writes to an isolated staging branch. Data quality checks run there, and the data is published to main only if they pass. A failed validation rolls the branch back, so readers on main never see bad data.
+
+### Table properties as a metadata contract
+
+Iceberg table properties are also a useful metadata contract. Custom properties can tag tables with context that semantic layers, agents, and downstream consumers discover programmatically:
+
+```sql
+ALTER TABLE analytics.events SET TBLPROPERTIES (
+  'platform.medallion.layer' = 'gold',
+  'platform.watermark.high' = '2026-03-18',
+  'platform.watermark.low' = '2026-01-01'
+);
+```
+
+The medallion layer property tells consumers whether they're looking at raw, cleaned, or aggregated data. Watermarks advertise the freshness window — an AI agent or semantic layer can inspect these before deciding whether the table is suitable for a given query. Since properties are part of Iceberg metadata, they're versioned alongside everything else and queryable through the REST catalog.
+
+### Schema evolution without downtime
+
+Columns can be renamed, nullable fields added, and partition schemes changed without rewriting a single data file. Iceberg handles each through metadata-only operations.
+
+### Snapshot expiration matters
+
+Iceberg keeps every snapshot by default. Without cleanup, metadata and orphaned data files grow forever. A scheduled Spark job expires snapshots older than 7 days and removes unreferenced data files:
+
+```sql
+CALL system.expire_snapshots('events', TIMESTAMP '2026-03-12 00:00:00');
+CALL system.remove_orphan_files('events');
+```
+
+> **Dropped-table cleanup is also bounded:** Lakekeeper automatically purges a dropped table's data files from S3. A configurable soft-delete window allows restoration before an internal task queue removes the underlying files.
+
+For new lakehouse architectures, Iceberg plus a REST catalog is a strong starting point. The open ecosystem avoids locking compute into one vendor.

@@ -1,0 +1,103 @@
+---
+title: "From 60 Minutes to 4: Optimizing Spark MERGE INTO on a 2 Billion Row Iceberg Table"
+description: "Optimizing a daily Iceberg upsert from an hour to under 4 minutes with storage partition joins and shuffle hash hints."
+pubDate: "2026-03-19"
+authors:
+  - "Manoj Babu Katragadda"
+  - "Meghanath Macha"
+team: "Platform Team"
+tags: ["spark", "iceberg", "performance", "data-engineering"]
+heroImage: "../../assets/blog/spark-merge-optimization.png"
+status: "published"
+---
+
+import { Image } from 'astro:assets';
+import optimizationDiagram from '../../assets/blog/spark-merge-optimization.png';
+
+A daily pipeline upserts ~50 million records into an Iceberg table with over 2 billion rows, powered by the open-source [Lakekeeper](https://github.com/lakekeeper/lakekeeper) REST catalog. The table serves as a fresh source of truth for downstream systems.
+
+The problem: `MERGE INTO` on a table this size took about an hour. Storage-aware joins brought it below 4 minutes.
+
+<Image src={optimizationDiagram} alt="Spark MERGE INTO optimization — from 60 minutes with full shuffle and sort merge, to 40 minutes with storage partition join, to 4 minutes with shuffle hash join" width={1020} />
+
+## The Baseline: 60 Minutes
+
+The naive approach is straightforward — merge the daily incremental data into the target table:
+
+```sql
+MERGE INTO analytics.events AS target
+USING daily_incremental AS source
+ON target.entity_id = source.entity_id
+WHEN MATCHED THEN UPDATE SET ...
+WHEN NOT MATCHED THEN INSERT ...
+```
+
+On a 2 billion row table with 50 million new records per day, Spark has to shuffle both sides on `entity_id`, sort them, and then execute the merge. That amount of network movement pushed runtime to about an hour.
+
+## Optimization 1: Storage Partition Join → 40 Minutes
+
+The target table was already bucketed by `entity_id` into 256 buckets, physically organizing data on disk by the join key. Spark can take advantage of this with a **storage partition join**: instead of shuffling the massive target side, it reads each bucket directly. The key enabler is `spark.sql.sources.v2.bucketing.shuffle.enabled`, which tells Spark to shuffle the smaller side (50M rows) according to the partitioning reported by the larger side (256 buckets), so only the incremental data moves across the network.
+
+```properties
+# Enable storage-aware bucketing (Iceberg v2 tables)
+spark.sql.sources.v2.bucketing.enabled=true
+spark.sql.sources.v2.bucketing.pushPartValues.enabled=true
+spark.sql.sources.v2.bucketing.shuffle.enabled=true
+```
+
+This alone dropped the runtime from 60 to ~40 minutes. The shuffle was no longer the bottleneck — but sorting still was.
+
+## Optimization 2: Shuffle Hash Join → 4 Minutes
+
+Even with 256 buckets, Spark was still sorting both sides within each bucket before the merge. That's sorting ~8 million rows per bucket on the target side, 256 times over. Sorting was the new bottleneck.
+
+The fix: force a **shuffle hash join** on the smaller (incremental) side. A hash join builds a hash table from the smaller side and probes it with the larger side — no sorting required.
+
+```sql
+MERGE INTO analytics.events AS target
+USING /*+ SHUFFLE_HASH(source) */ daily_incremental AS source
+ON target.entity_id = source.entity_id
+WHEN MATCHED THEN UPDATE SET ...
+WHEN NOT MATCHED THEN INSERT ...
+```
+
+```properties
+# Prefer hash join over sort merge
+spark.sql.join.preferSortMergeJoin=false
+
+# Match shuffle partitions to bucket count
+spark.sql.shuffle.partitions=256
+```
+
+This eliminated the sort on the 2 billion row side entirely. Runtime dropped to ~4 minutes.
+
+## The Gotcha: Spark Doesn't Always Listen
+
+The shuffle hash hint worked only sometimes. On other runs, the pipeline reverted to 40 minutes because Spark silently chose sort merge join instead.
+
+Spark is the final arbiter of join strategy. Even with a hint, it does a safety check: will the smaller side's partition fit in memory? If Spark estimates it won't, it falls back to sort merge join. This estimation uses `spark.sql.autoBroadcastJoinThreshold` — not just for broadcast joins, but also as a heuristic for whether a shuffle hash join is safe.
+
+Disabling Adaptive Query Execution (AQE) alone did not stop the plan from changing. The reliable fix required **both** settings:
+
+```properties
+# Disable AQE to prevent runtime re-optimization
+spark.sql.adaptive.enabled=false
+
+# Set threshold high enough so Spark trusts the hash join is safe
+spark.sql.autoBroadcastJoinThreshold=512MB
+```
+
+The `autoBroadcastJoinThreshold` tells Spark: \"a partition of the smaller table up to this size can fit in memory.\" Daily incremental data across 256 buckets worked out to ~200MB per partition, so a 512MB threshold gave Spark enough headroom to pick shuffle hash join consistently.
+
+With both settings in place, the pipeline runs under 4 minutes every single time.
+
+## Summary
+
+| Optimization | Runtime | What Changed |
+|---|---|---|
+| Baseline (full shuffle + sort merge) | ~60 min | — |
+| Storage partition join (skip target shuffle) | ~40 min | Eliminated shuffle on 2B row side |
+| Shuffle hash join hint | ~4 min | Eliminated sort on 2B row side |
+| + Disable AQE + set autoBroadcastJoinThreshold | ~4 min (consistent) | Prevented Spark from falling back to sort merge |
+
+The takeaway: on bucketed Iceberg tables, the combination of storage partition joins and shuffle hash hints can be transformative. But Spark's join strategy selection has subtle heuristics — you need to understand what's happening under the hood to make it stick.

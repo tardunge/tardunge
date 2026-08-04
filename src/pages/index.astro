@@ -1,16 +1,12 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import EditorHeader from '../components/EditorHeader.astro';
+import EditorStatusline from '../components/EditorStatusline.astro';
+import PostCard from '../components/PostCard.astro';
+import { getPublishedPosts } from '../lib/posts';
 
 const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
 const resumeUrl = `${base}manoj-babu-katragadda-resume.pdf`;
-
-const navigation = [
-  { id: 'about', label: 'about.md' },
-  { id: 'work', label: 'work.ts' },
-  { id: 'experience', label: 'career.log' },
-  { id: 'writing', label: 'notes.md' },
-  { id: 'contact', label: 'contact.sh' },
-];
 
 const projects = [
   {
@@ -21,6 +17,8 @@ const projects = [
       'A declarative ML lifecycle platform with 17 resource types, an AST-based compiler, dependency resolution, artifact versioning, and isolated workspaces across test, staging, and production.',
     impact: 'One Python SDK from data segmentation to model deployment.',
     stack: ['Python', 'FastAPI', 'React', 'Spark'],
+    articleHref: '/blog/what-we-learned-building-our-ml-platform',
+    articleLabel: 'Inside the Zest compiler',
   },
   {
     index: '02',
@@ -30,6 +28,8 @@ const projects = [
       'A composable PySpark ETL framework with lifecycle hooks, plugin-based extractors and compactors, plus write-audit-publish data quality gates.',
     impact: 'Cut per-pipeline code by 75% and became the execution backbone for ML operations.',
     stack: ['PySpark', 'Iceberg', 'Kubernetes', 'WAP'],
+    articleHref: '/blog/building-a-composable-etl-framework',
+    articleLabel: 'Read the framework design',
   },
   {
     index: '03',
@@ -39,6 +39,8 @@ const projects = [
       'A single-binary Apache Iceberg table analyzer serving a REST API and embedded interface for file distribution, snapshot health, and orphan detection—without Spark or JVM overhead.',
     impact: 'Fast operational insight into lakehouse table health.',
     stack: ['Rust', 'Axum', 'iceberg-rust', 'React'],
+    articleHref: '/blog/building-our-lakehouse-with-iceberg',
+    articleLabel: 'Read the lakehouse architecture',
   },
   {
     index: '04',
@@ -49,6 +51,8 @@ const projects = [
     impact: 'Presented at PyCon Malaysia 2023 and released for the wider data community.',
     stack: ['Python', 'Prefect', 'Spark', 'Kubernetes'],
     href: 'https://github.com/tardunge/prefect-spark-on-k8s-operator',
+    articleHref: '/blog/running-spark-on-kubernetes',
+    articleLabel: 'Read the Kubernetes playbook',
   },
 ];
 
@@ -60,6 +64,7 @@ const experience = [
     roles: [{ title: 'Principal Platform Engineer · Consultant', period: 'Apr 2025 — Apr 2026' }],
     summary:
       'Built the data and ML platform layer: cost-efficient Spark on Kubernetes, declarative MLOps, composable lakehouse execution, custom Airflow providers, and Rust-native Iceberg tooling.',
+    articleHref: '/blog',
   },
   {
     company: 'AirAsia Berhad',
@@ -72,6 +77,7 @@ const experience = [
     ],
     summary:
       'Pioneered data mesh adoption, designed event-driven backend foundations, built experimentation systems, and mentored engineers across the platform, software, and data organizations.',
+    articleHref: null,
   },
   {
     company: 'honestbee',
@@ -80,6 +86,7 @@ const experience = [
     roles: [{ title: 'Data Engineer II', period: 'Jun 2018 — Mar 2019' }],
     summary:
       'Designed ETL systems with Airflow, Spark, AWS Glue, and Redshift; partnered with data scientists to operationalize model workloads on Kubernetes.',
+    articleHref: null,
   },
   {
     company: 'Zivame',
@@ -91,6 +98,7 @@ const experience = [
     ],
     summary:
       'Built recommendation and search systems, customer-facing product discovery, Java APIs, and the infrastructure behind caching and centralized service observability.',
+    articleHref: null,
   },
   {
     company: 'Kore.ai',
@@ -98,35 +106,17 @@ const experience = [
     period: 'Sep 2014 — Jul 2015',
     roles: [{ title: 'Software Engineer', period: 'Sep 2014 — Jul 2015' }],
     summary: 'Developed backend APIs in Node.js at the start of a decade-long engineering career.',
+    articleHref: null,
   },
 ];
 
-const noteTopics = [
-  {
-    label: 'PyCon Malaysia · 2023',
-    title: 'Prefect + Spark on Kubernetes',
-    description: 'A conference talk on the lessons behind building a Prefect integration for orchestrating Spark jobs on Kubernetes.',
-    state: 'conference talk',
-    href: 'https://github.com/tardunge/prefect-spark-on-k8s-operator',
-  },
-  {
-    label: 'Platform economics',
-    title: 'Running Spark entirely on spot capacity',
-    description: 'Architecture notes on shuffle durability, failure recovery, and the path to 90% lower infrastructure cost.',
-    state: 'working note',
-  },
-  {
-    label: 'Lakehouse operations',
-    title: 'Iceberg health without the JVM',
-    description: 'Practical signals for file distribution, snapshot hygiene, and orphan detection in production tables.',
-    state: 'working note',
-  },
-];
+const latestPosts = (await getPublishedPosts()).slice(0, 3);
 
 const skillGroups = [
   ['Kubernetes', 'Terraform', 'Docker', 'AWS', 'GCP'],
   ['Spark', 'Iceberg', 'Trino', 'Airflow', 'Prefect'],
   ['Go', 'Python', 'Rust', 'Java', 'Node.js'],
+
 ];
 ---
 
@@ -136,79 +126,7 @@ const skillGroups = [
 >
   <div class="page-frame">
     <main class="editor" id="main-content">
-      <header class="editor-header">
-        <a class="wordmark" href="#about" aria-label="Manoj Babu Katragadda, home">
-          <span aria-hidden="true">~/</span>manoj
-        </a>
-
-        <nav class="buffer-tabs" aria-label="Primary navigation">
-          {navigation.map((item, index) => (
-            <a
-              class:list={['buffer-tab', { active: index === 0 }]}
-              href={`#${item.id}`}
-              data-section-link={item.id}
-              aria-current={index === 0 ? 'location' : undefined}
-            >
-              <span class="tab-dot" aria-hidden="true"></span>
-              {item.label}
-            </a>
-          ))}
-        </nav>
-
-        <p class="header-availability">
-          <span class="pulse" aria-hidden="true"></span>
-          <span>Bali · Asia/Makassar · <strong>Available</strong> for fractional engagements</span>
-        </p>
-
-        <div class="header-actions" role="group" aria-label="Profile links and appearance">
-          <a
-            class="header-action"
-            href="https://github.com/tardunge"
-            target="_blank"
-            rel="noreferrer"
-            aria-label="GitHub profile"
-            title="GitHub"
-          >
-            <svg class="header-action-icon is-filled" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 1.4a10.8 10.8 0 0 0-3.4 21c.54.1.74-.24.74-.52v-2.1c-3.02.66-3.66-1.28-3.66-1.28-.5-1.26-1.2-1.6-1.2-1.6-.98-.68.08-.66.08-.66 1.08.08 1.66 1.12 1.66 1.12.96 1.64 2.52 1.16 3.14.88.1-.7.38-1.16.68-1.44-2.42-.28-4.96-1.22-4.96-5.34 0-1.18.42-2.14 1.12-2.9-.12-.28-.48-1.38.1-2.86 0 0 .9-.3 2.96 1.1A10.3 10.3 0 0 1 12 6.44c.92 0 1.84.12 2.7.36 2.06-1.4 2.96-1.1 2.96-1.1.58 1.48.22 2.58.1 2.86.7.76 1.12 1.72 1.12 2.9 0 4.14-2.56 5.06-4.98 5.32.4.34.74 1 .74 2.02v3.08c0 .28.2.62.74.52A10.8 10.8 0 0 0 12 1.4Z"></path>
-            </svg>
-          </a>
-          <a
-            class="header-action"
-            href="https://linkedin.com/in/manojbabuiit"
-            target="_blank"
-            rel="noreferrer"
-            aria-label="LinkedIn profile"
-            title="LinkedIn"
-          >
-            <svg class="header-action-icon is-filled" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M20.45 20.45h-3.56v-5.57c0-1.33-.03-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.34V8.98h3.42v1.57h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.29ZM5.32 7.41a2.07 2.07 0 1 1 0-4.13 2.07 2.07 0 0 1 0 4.13ZM7.1 20.45H3.54V8.98H7.1v11.47Z"></path>
-            </svg>
-          </a>
-          <a
-            class="header-action"
-            href={resumeUrl}
-            target="_blank"
-            rel="noreferrer"
-            aria-label="Open résumé"
-            title="Résumé"
-          >
-            <svg class="header-action-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"></path>
-              <path d="M14 2v6h6M8 13h8M8 17h6"></path>
-            </svg>
-          </a>
-          <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch color theme" title="Switch color theme">
-            <svg class="theme-icon theme-icon-light" viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="12" cy="12" r="3.5"></circle>
-              <path d="M12 2v2.2M12 19.8V22M4.93 4.93l1.56 1.56M17.51 17.51l1.56 1.56M2 12h2.2M19.8 12H22M4.93 19.07l1.56-1.56M17.51 6.49l1.56-1.56"></path>
-            </svg>
-            <svg class="theme-icon theme-icon-dark" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M20.4 15.2A8.7 8.7 0 0 1 8.8 3.6 8.7 8.7 0 1 0 20.4 15.2Z"></path>
-            </svg>
-          </button>
-        </div>
-      </header>
+      <EditorHeader active="about" home />
 
       <section class="editor-buffer hero" id="about" aria-labelledby="hero-title">
         <div class="line-numbers hero-lines" aria-hidden="true">
@@ -313,6 +231,9 @@ const skillGroups = [
                   </div>
                   <p class="project-description">{project.description}</p>
                   <p class="project-impact"><span class="result-label">result</span><span>{project.impact}</span></p>
+                  <a class="related-reading" href={project.articleHref}>
+                    {project.articleLabel} <span aria-hidden="true">→</span>
+                  </a>
                 </div>
               </article>
             ))}
@@ -350,6 +271,11 @@ const skillGroups = [
                     ))}
                   </div>
                   <p>{job.summary}</p>
+                  {job.articleHref && (
+                    <a class="related-reading" href={job.articleHref}>
+                      Read the engineering notes <span aria-hidden="true">→</span>
+                    </a>
+                  )}
                 </div>
               </li>
             ))}
@@ -373,27 +299,25 @@ const skillGroups = [
         <div class="buffer-content">
           <div class="section-heading">
             <div>
-              <p class="section-kicker">// talks & field notes</p>
-              <h2 id="writing-title">Ideas tested in production.</h2>
+              <p class="section-kicker">// latest articles</p>
+              <h2 id="writing-title">Systems, explained.</h2>
             </div>
-            <p>I write and speak to turn production lessons into reusable decisions—without sanding off the tradeoffs that made them useful.</p>
+            <div class="section-heading-action">
+              <p>Production notes on data, ML, Kubernetes, Spark, and lakehouse architecture.</p>
+              <a class="text-link" href="/blog">Open all articles <span aria-hidden="true">→</span></a>
+            </div>
           </div>
 
-          <div class="notes-grid">
-            {noteTopics.map((note) => (
-              <article class="note-card">
-                <p>{note.label}</p>
-                <h3>
-                  {note.href ? (
-                    <a href={note.href} target="_blank" rel="noreferrer">{note.title} <span aria-hidden="true">↗</span></a>
-                  ) : note.title}
-                </h3>
-                <p>{note.description}</p>
-                <div class="note-footer">
-                  <span class="note-state">{note.state}</span>
-                  {note.href && <a class="note-link" href={note.href} target="_blank" rel="noreferrer">View source <span aria-hidden="true">↗</span></a>}
-                </div>
-              </article>
+          <div class="homepage-posts">
+            {latestPosts.map((post) => (
+              <PostCard
+                title={post.data.title}
+                description={post.data.description}
+                pubDate={post.data.pubDate}
+                tags={post.data.tags}
+                slug={post.id}
+                heroImage={post.data.heroImage}
+              />
             ))}
           </div>
         </div>
@@ -421,41 +345,13 @@ const skillGroups = [
         </div>
       </section>
 
-      <footer class="statusline" aria-label="Site status">
-        <div class="status-mode">NORMAL</div>
-        <div class="status-file">portfolio.astro</div>
-        <div class="status-spacer"></div>
-        <div class="status-location">Bali · Asia/Makassar</div>
-        <div class="status-position">Ln 171, Col 1</div>
-      </footer>
+      <EditorStatusline file="portfolio.astro" position="Ln 171, Col 1" />
     </main>
   </div>
 
   <script>
-    const root = document.documentElement;
-    const themeToggle = document.querySelector<HTMLButtonElement>('#theme-toggle');
-    const themeColor = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
     const bufferTabs = document.querySelector<HTMLElement>('.buffer-tabs');
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-
-    const updateThemeControl = () => {
-      const currentTheme = root.dataset.theme === 'dark' ? 'dark' : 'light';
-      const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
-      themeToggle?.setAttribute('aria-label', `Switch to ${nextTheme} theme`);
-      themeToggle?.setAttribute('title', `Switch to ${nextTheme} theme`);
-      themeColor?.setAttribute('content', currentTheme === 'dark' ? '#2e3440' : '#eceff4');
-    };
-
-    updateThemeControl();
-
-    themeToggle?.addEventListener('click', () => {
-      const nextTheme = root.dataset.theme === 'dark' ? 'light' : 'dark';
-      root.dataset.theme = nextTheme;
-      localStorage.setItem('theme', nextTheme);
-      updateThemeControl();
-    });
-
     const sectionLinks = Array.from(document.querySelectorAll<HTMLAnchorElement>('[data-section-link]'));
     const sections = Array.from(document.querySelectorAll<HTMLElement>('section[id]'));
 

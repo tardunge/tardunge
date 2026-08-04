@@ -1,0 +1,27 @@
+---
+import { Image } from 'astro:assets';
+import { authors } from '../data/authors';
+
+interface Props {
+  names: string[];
+}
+
+const { names } = Astro.props;
+const profiles = names.map((name) => authors[name] ?? { name, role: '', initials: name.slice(0, 2).toUpperCase() });
+---
+
+<div class="article-authors" aria-label="Article authors">
+  {profiles.map((author) => (
+    <div class="article-author">
+      {author.avatar ? (
+        <Image src={author.avatar} alt="" width={88} height={88} class="article-author-avatar" />
+      ) : (
+        <span class="article-author-initials" aria-hidden="true">{author.initials}</span>
+      )}
+      <div>
+        <p>{author.name}</p>
+        {author.role && <span>{author.role}</span>}
+      </div>
+    </div>
+  ))}
+</div>

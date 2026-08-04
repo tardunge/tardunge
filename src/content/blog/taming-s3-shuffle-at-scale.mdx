@@ -1,0 +1,203 @@
+---
+title: "Taming S3 Shuffle at Scale"
+description: "Fixing the GET request explosion, prefix throttling, and threading edge cases that emerge when S3 shuffle meets production scale."
+pubDate: "2026-03-30"
+authors:
+  - "Manoj Babu Katragadda"
+  - "Meghanath Macha"
+team: "Platform Team"
+tags: ["spark", "s3-shuffle", "performance", "data-engineering", "scale"]
+heroImage: "../../assets/blog/taming-s3-shuffle.png"
+status: "published"
+---
+
+import { Image } from 'astro:assets';
+import heroDiagram from '../../assets/blog/taming-s3-shuffle.png';
+
+[Part 1](/blog/spark-on-spot-with-s3-shuffle) described how S3 shuffle decouples shuffle storage from ephemeral compute, making 100% spot executors practical. Shuffle data survives node death, Karpenter provisions replacements in ~30 seconds, and compute costs fall by 70-85%.
+
+At thousands of map tasks and high executor concurrency, three new problems emerged: an S3 request explosion from the per-mapper file design, S3 prefix rate limiting, and threading edge cases that caused executor hangs. Configuration solved the first two. The third required production-hardening patches to the plugin.
+
+<Image src={heroDiagram} alt="Diagram showing S3 shuffle problems on the left with corresponding outcomes on the right: config-level fixes for GET explosion and prefix throttling, and plugin patches for threading deadlocks" width={1020} />
+
+## The GET Request Explosion
+
+The [upstream S3 shuffle plugin](https://github.com/IBM/spark-s3-shuffle) writes one `.data` file per map task, with a companion `.index` file that stores byte offsets for each reduce partition. On the read side, each reducer opens a separate S3 stream for every mapper that produced data for its partition. The S3 GET count scales as **O(mappers x reducers)**.
+
+The input consisted of thousands of Parquet files, each becoming one Spark map task. A one-month backfill produced ~3,750 map tasks; with `spark.sql.shuffle.partitions` at 4,000, that meant **15 million S3 GETs per shuffle stage**. A three-month window pushed the count to 45 million. At S3's standard GET pricing ($0.0004 per 1,000), one three-month backfill cost **$36 in S3 GETs alone** before data transfer.
+
+The quadratic scaling makes this worse fast:
+
+| Time Window | Map Tasks | Shuffle Partitions | S3 GETs (per stage) | Cost (2 stages) |
+|-------------|-----------|-------------------|---------------------|-----------------|
+| 1 month | ~3,750 | 4,000 | 15M | ~$12 |
+| 3 months | ~11,250 | 4,000 | 45M | ~$36 |
+| 6 months | ~22,500 | 4,000 | 90M | ~$72 |
+
+The plugin design was not the only cause: the workload created far more map tasks than necessary. A wide time window read thousands of input files, each becoming its own task, when fewer coalesced partitions would suffice.
+
+### The Fix: Coalesce Input + Tune Partitions
+
+This mitigation required zero plugin changes. The fix is to reduce both sides of the multiplication. Coalesce input files into fewer, larger partitions to reduce map tasks. Tune `spark.sql.shuffle.partitions` to match your actual parallelism needs.
+
+```
+GET_requests ≈ map_tasks × shuffle_partitions × num_shuffle_stages
+```
+
+For these backfills, coalescing dropped map tasks from thousands to ~2,000. Tuning shuffle partitions then brought a three-month backfill from 45 million GETs ($36) to around 4 million GETs per stage—an order-of-magnitude reduction in S3 API costs.
+
+## S3 Prefix Throttling
+
+AWS S3 enforces rate limits per prefix: 5,500 GET/HEAD requests per second and 3,500 PUT/COPY/POST/DELETE per second. The plugin distributes shuffle files across multiple prefix folders using `mapId % folderPrefixes` to spread the load.
+
+With the default 10 prefixes, you get a budget of 55,000 GET/s across all prefixes. That sounds generous — until you have tens of millions of GETs in a shuffle stage. At 55K GET/s, draining 15M GETs (a one-month backfill) takes **~4.5 minutes of pure rate-limited waiting** per stage. A six-month window at 90M GETs takes **~27 minutes per stage**. That is nearly an hour of your job spent just waiting on S3 rate limits — before any actual data processing. And in practice, contention from concurrent reduce tasks hitting the same prefixes means you start seeing S3 503 SlowDown errors well before the theoretical limit.
+
+### The Fix: Scale Prefixes Per Workload
+
+Set `spark.shuffle.s3.folderPrefixes` generously. A value of 500 worked across these jobs. The tradeoff is increased `listStatus` overhead during cleanup—one list call per prefix. Another option is `spark.shuffle.s3.cleanup: false` with S3 lifecycle policies expiring shuffle data after a day.
+
+## Production S3A and Shuffle Tuning
+
+The Hadoop S3A client and shuffle plugin used these settings:
+
+```yaml
+# S3A client tuning — maximize throughput
+spark.hadoop.fs.s3a.fast.upload: "true"
+spark.hadoop.fs.s3a.fast.upload.buffer: "bytebuffer"
+spark.hadoop.fs.s3a.max.total.tasks: "500"
+spark.hadoop.fs.s3a.threads.max: "500"
+spark.hadoop.fs.s3a.connection.maximum: "500"
+spark.hadoop.fs.s3a.input.fadvise: "random"
+spark.hadoop.fs.s3a.committer.name: "directory"
+spark.hadoop.fs.s3a.connection.timeout: "60000"
+spark.hadoop.fs.s3a.attempts.maximum: "3"
+
+# Shuffle plugin tuning
+spark.shuffle.checksum.enabled: "false"
+spark.shuffle.s3.bufferSize: "268435456"  # 256 MB
+spark.shuffle.s3.maxBufferSizeTask: "2147483648"  # 2 GB
+spark.shuffle.s3.maxConcurrencyTask: "50"
+spark.reducer.maxSizeInFlight: "256M"
+```
+
+A few notes:
+
+- **500 connections/threads**: Each executor needs enough S3 parallelism to saturate its network link. 500 is high but these are I/O-bound threads waiting on network responses, not CPU-bound.
+- **`bytebuffer` uploads**: Uses off-heap direct byte buffers for S3 uploads, avoiding GC pressure on the JVM heap.
+- **`random` fadvise**: Tells the S3A client to optimize for random access patterns (shuffle reads), not sequential scans.
+- **Checksums disabled**: S3 provides its own data integrity guarantees. The plugin's per-partition checksums create additional S3 objects and add CPU overhead during reads with no practical benefit.
+- **LZ4 compression**: The ETLs use LZ4 for shuffle data. It prioritizes speed over compression ratio because S3 I/O latency, not bandwidth, is the bottleneck.
+
+All shuffle data flows to a dedicated ephemeral S3 bucket with per-ETL prefixes. This isolates shuffle traffic from production table I/O and allows aggressive lifecycle policies for cleanup.
+
+## Production Hardening: Threading Edge Cases
+
+At high concurrency—30+ cores per executor and hundreds of prefetch threads—executors began hanging until the driver killed them for missed heartbeats. Tasks in the Spark UI were frozen rather than slow, pointing to plugin threading edges that do not surface at moderate scale.
+
+Two issues were traced and fixed in [the maintained fork](https://github.com/tardunge/spark-s3-shuffle).
+
+### ConcurrentObjectMap: Cache Corruption from Non-Atomic Operations
+
+The plugin uses `ConcurrentObjectMap` to cache index files and checksums — data that gets read repeatedly by multiple reduce tasks. The upstream implementation uses Scala's `TrieMap` with a pattern that is not atomic under high concurrency:
+
+```scala
+// Upstream — race condition under high concurrency
+val l = valueLocks.get(key).getOrElse({
+  valueLocks.getOrElseUpdate(key, { new Object() })
+})
+```
+
+The problem: `valueLocks.get(key)` and `valueLocks.getOrElseUpdate(key, ...)` are two separate operations on a `TrieMap`. Between them, another thread can insert the same key. This leads to two threads holding different lock objects for the same key — which means the lock does not actually serialize access.
+
+The fix replaces `TrieMap` with `ConcurrentHashMap` and uses `computeIfAbsent` for atomic lock creation:
+
+```scala
+// Fixed — atomic per-key locking
+val lock = keyLocks.computeIfAbsent(key, _ => new Object())
+lock.synchronized {
+  Option(map.get(key)).getOrElse {
+    val value = op(key)
+    map.put(key, value)
+    value
+  }
+}
+```
+
+`ConcurrentHashMap.computeIfAbsent` is atomic — it guarantees that only one lock object is created per key, so two threads requesting the same key always serialize correctly.
+
+### S3BufferedPrefetchIterator: Memory Lock Deadlock
+
+This was the bigger issue. The `S3BufferedPrefetchIterator` prefetches shuffle blocks in background threads to hide S3 latency. The upstream implementation uses `synchronized(this)` for everything — memory management, the completed-blocks queue, and thread lifecycle all share the same monitor lock. At moderate concurrency this works fine, but with 30+ cores and dozens of prefetch threads competing for the same monitor, the following scenario becomes likely:
+
+1. A prefetch thread holds the lock, waiting for memory to become available (`wait()` inside `synchronized`)
+2. The consumer thread (Spark task) calls `next()` to consume a prefetched block, which would free memory
+3. But `next()` also needs `synchronized(this)` — blocked because the prefetch thread holds it
+4. Deadlock: prefetch thread waits for memory, consumer waits for the lock, neither can proceed
+
+The fix separates the concerns:
+
+- **Memory management** gets its own `memoryLock` object — prefetch threads wait on this, not the main monitor
+- **Completed-blocks queue** replaced with `LinkedBlockingDeque` — thread-safe without holding any lock
+- **5-second timeout** on memory allocation — if memory is not available, the block streams unbuffered instead of deadlocking
+- **30-second timeout** on `next()` — throws `TimeoutException` instead of hanging forever
+
+```scala
+// Separate memory lock — no more deadlock with consumer
+memoryLock.synchronized {
+  val deadline = System.currentTimeMillis() + MEMORY_WAIT_TIMEOUT_MS
+  while (memoryUsage + bsize > maxBufferSize && !timedOut) {
+    val remaining = deadline - System.currentTimeMillis()
+    if (remaining <= 0) timedOut = true
+    else memoryLock.wait(remaining)
+  }
+}
+
+// Consumer polls from thread-safe deque — no synchronized needed
+result = completed.pollFirst(100, TimeUnit.MILLISECONDS)
+```
+
+This deadlock was the likely cause of the executor hangs and heartbeat timeouts. Separating the lock and adding timeouts stopped the hangs.
+
+### Missing Reliable Storage Declaration
+
+The upstream plugin does not declare `supportsReliableStorage()`. Without it, Spark does not know that shuffle data is durable in S3 and cannot safely decommission executors during spot interruption. The fork adds a four-line override:
+
+```scala
+override def supportsReliableStorage(): Boolean = {
+  true
+}
+```
+
+This tells Spark's `BlockManagerDecommissioner` to skip shuffle block replication when an executor is being drained — the data is already safe in S3.
+
+### Compatibility: BypassMergeSortShuffleWriter
+
+One more fix that is not about scale but about deployment. When the plugin is loaded via `spark.jars.packages` (fetched from a Maven repository at runtime), the `BypassMergeSortShuffleWriter` class is not directly accessible because it has package-private visibility in `org.apache.spark.shuffle.sort`. The upstream code calls `new BypassMergeSortShuffleWriter(...)` directly, which fails with an `IllegalAccessError`.
+
+The compatibility fix uses reflection to instantiate it:
+
+```scala
+val clazz = Class.forName(
+  "org.apache.spark.shuffle.sort.BypassMergeSortShuffleWriter")
+val constructor = clazz.getDeclaredConstructor(...)
+constructor.setAccessible(true)
+constructor.newInstance(...)
+```
+
+This is a deployment issue, not a scale issue — but it was a blocker for running the plugin in production on Kubernetes where JARs are resolved via Ivy at spark-submit time.
+
+## Summary
+
+| Problem | Fix | Where |
+|---------|-----|-------|
+| GET explosion (O(M x R)) | Coalesce input + tune partitions | Config (95% reduction) |
+| S3 prefix throttling (503 errors) | Scale folderPrefixes 20-500 | Config |
+| S3A throughput | 500 connections, random fadvise, LZ4 | Config |
+| ConcurrentObjectMap race condition | ConcurrentHashMap + per-key locking | [Fork](https://github.com/tardunge/spark-s3-shuffle) |
+| Prefetch iterator deadlock | Separate memory lock + timeouts | [Fork](https://github.com/tardunge/spark-s3-shuffle) |
+| Missing supportsReliableStorage() | Declare true for safe decommissioning | [Fork](https://github.com/tardunge/spark-s3-shuffle) |
+| BypassMergeSortShuffleWriter access | Reflection for package-private class | [Fork](https://github.com/tardunge/spark-s3-shuffle) |
+
+The config-level fixes are worth doing regardless — they apply to anyone using the S3 shuffle plugin. Input coalescing and partition tuning alone can cut S3 API costs by an order of magnitude. Prefix scaling eliminates throttling. S3A tuning maximizes throughput.
+
+The production-hardening patches address threading edges that surface at high concurrency—30+ cores per executor with hundreds of concurrent prefetch threads. The upstream plugin works well at moderate scale; these fixes extend it to high-concurrency environments. The [maintained fork](https://github.com/tardunge/spark-s3-shuffle) includes all patches and targets Spark 4.0 with Scala 2.13.

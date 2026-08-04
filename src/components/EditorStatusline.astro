@@ -1,0 +1,16 @@
+---
+interface Props {
+  file: string;
+  position?: string;
+}
+
+const { file, position = 'Ln 1, Col 1' } = Astro.props;
+---
+
+<footer class="statusline" aria-label="Site status">
+  <div class="status-mode">NORMAL</div>
+  <div class="status-file">{file}</div>
+  <div class="status-spacer"></div>
+  <div class="status-location">Bali · Asia/Makassar</div>
+  <div class="status-position">{position}</div>
+</footer>

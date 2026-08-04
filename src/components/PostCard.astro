@@ -1,0 +1,43 @@
+---
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+import FormattedDate from './FormattedDate.astro';
+
+interface Props {
+  title: string;
+  description: string;
+  pubDate: Date;
+  tags: string[];
+  slug: string;
+  heroImage: ImageMetadata;
+  featured?: boolean;
+}
+
+const { title, description, pubDate, tags, slug, heroImage, featured = false } = Astro.props;
+const href = `${import.meta.env.BASE_URL.replace(/\/?$/, '/') }blog/${slug}/`;
+---
+
+<article class:list={['blog-card', { featured }]}>
+  <a href={href} class="blog-card-link">
+    <div class="blog-card-image">
+      <Image
+        src={heroImage}
+        alt=""
+        width={featured ? 1120 : 720}
+        height={featured ? 520 : 400}
+        loading={featured ? 'eager' : 'lazy'}
+      />
+      <span class="blog-card-command" aria-hidden="true">:open</span>
+    </div>
+    <div class="blog-card-copy">
+      <div class="blog-card-meta">
+        <FormattedDate date={pubDate} />
+        <span>·</span>
+        <span>{tags.slice(0, 2).join(' / ')}</span>
+      </div>
+      <h2>{title}</h2>
+      <p>{description}</p>
+      <span class="blog-card-read">Read article <span aria-hidden="true">→</span></span>
+    </div>
+  </a>
+</article>

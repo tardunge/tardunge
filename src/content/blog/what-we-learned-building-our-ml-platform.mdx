@@ -1,0 +1,183 @@
+---
+title: "What We Learned Building Our ML Platform"
+description: "Six ideas about feature stores, AST-generated ETLs, content-addressed artifacts, and control planes — distilled from building a semantic layer for ML."
+pubDate: "2026-04-23"
+authors:
+  - "Manoj Babu Katragadda"
+  - "Meghanath Macha"
+team: "Platform Team"
+tags: ["mlops", "semantic-layer", "data-engineering", "platform-engineering", "apache-iceberg"]
+heroImage: "../../assets/blog/zest-semantic-layer-hero.png"
+status: "published"
+---
+
+import { Image } from 'astro:assets';
+import heroDiagram from '../../assets/blog/zest-semantic-layer-hero.png';
+import compileDiagram from '../../assets/blog/zest-compile-pipeline.png';
+
+Shipping ML on a lakehouse still leaves a missing layer above cohorts, features, labels, and models: one that knows how training sets, inference sets, and model versions relate. Zest fills that gap. This article focuses on six architectural choices behind it.
+
+<Image src={heroDiagram} alt="Semantic Layer for MLOps — a three-box flow: a CLI box with declare() and apply(), a Server box with compile() and deploy(), and an Airflow box with gather() and run(), connected by left-to-right arrows" width={1020} />
+
+The short version:
+
+1. Everything is a transformation.
+2. ETLs are generated from declarations, not written by hand.
+3. Execution modes are compile-time, not runtime.
+4. The artifact layer should be dumb. The control plane should be smart.
+5. Declare dependencies, not pipelines. The graph does change propagation, scope, and ordering for free.
+6. Don't build an orchestrator. Build a payload factory.
+
+## 1. Everything is a transformation
+
+The default mental model for ML infrastructure is a pile of specialized systems. Features live in a feature store, one row per entity-time-feature. Labels live in a training table. Models live in a model registry, keyed by version. Datasets get rebuilt every time by whatever training script runs last. Each concept has its own substrate, its own API, and its own notion of versioning. The relationships between them — which features this model uses, which cohort scoped those features, which label the training set joined against — live in the pipelines that stitch them together.
+
+Zest consolidates every ML resource—a feature family, cohort, label, training dataset, or model—as a declaration in one graph. Resources that compute something compile to the same primitive: a content-hashed, dependency-tracked transformation. Zest versions and ships those transformations, while outputs such as Iceberg tables and model artifacts stay in their existing stores. Individual features remain named columns within a family's output. Model versions, entities, sources, and schemas remain registry metadata in the same graph. The shape of computation is unified; metadata remains metadata.
+
+The consequence of this reframing runs through everything else in this post. If you treat ML work as stored outputs, you build a storage product. If you treat it as compiled transformations, you build a compiler. The two products diverge almost immediately: the storage product optimizes for read latency, online/offline consistency, and a global key space. The compiler product optimizes for version discipline, dependency graphs, and deterministic builds.
+
+The payoff of going the compiler route is uniformity. Cohorts, labels, feature families, training datasets, inference datasets, evaluation jobs — everything in the ML lifecycle ends up as one of two things on the execution side: a `SparkJob` or a `RayJob`. The resource types above that layer stay semantic (business-meaningful names like "high-value customers" or "churn probability"). The execution surface stays narrow.
+
+## 2. ETLs are generated from declarations, not written by hand
+
+The first consequence of \"features are transformations\" is that the platform must produce those transformations. Zest does so like a programming language produces executables: compile a declaration at a defined moment, emit deterministic source, and store the result as a content-addressed artifact.
+
+That moment is `apply`. In the SDK, a resource—cohort, feature family, or model—is declared before `client.apply()` runs. The server walks the declaration, builds a Python ETL script node by node with `ast`, unparses it to source, hashes it, stores it in an artifact repository, and writes the artifact ID onto the transformation row. The shape resembles `terraform apply`, except the provisioned object is an ETL rather than cloud infrastructure.
+
+<Image src={compileDiagram} alt="Compile pipeline diagram: a vertical flow from an orange declaration box (client.feature_family(...)) through blue AST build (ast.Module) and unparse (ast.unparse()) stages into a green content-addressed artifact repo, which produces three stacked green output cards: script.py, config.yaml, and zest_resource_context.py" width={520} />
+
+String templates are deliberately excluded. They were the shortest initial path but carried two problems. First, a malformed template produces broken Python that fails only at runtime; AST construction makes \"the platform can build your ETL\" part of the apply contract. Second, AST nodes make extension points, mixin composition, and inlined schema classes easier to assemble safely.
+
+A compiled script has an opinionated shape. Its generated class inherits from `ComposableETL`, supplied by the sibling [Lakehouse Spark Core](/blog/building-a-composable-etl-framework) framework, then one synthesized mixin per declared hook, then a CLI mixin that controls runtime arguments:
+
+```python
+# Compiled by Zest for transformation: spending_features_daily
+from lakehouse_spark_core import ComposableETL, ProcessDateCLIMixin
+
+# ... one synthesized hook mixin class per declared hook (elided)
+
+
+class SpendingFeaturesDailyETL(
+    ProcessDateCLIMixin,
+    FilterByCohortMixin,      # from the cohort dependency
+    WindowedSpendingMixin,    # from the feature declaration
+    ComposableETL,
+):
+    """Generated ETL class for transformation: spending_features_daily"""
+
+
+def main():
+    SpendingFeaturesDailyETL.cli_main()
+
+
+if __name__ == "__main__":
+    main()
+```
+
+Nothing interesting happens in `main`. All the logic lives in the mixins. The ETL framework's hook registry walks the class MRO at instantiation, finds methods decorated with `@register_hook(ProcessingHook.POST_EXTRACT, priority=20)`, and dispatches them at the right pipeline phase. The compiler produced the MRO. The runtime discovers it reflectively. The two systems never need to know each other's internals.
+
+Hook mixins are not the only thing the compiler injects. Every name in the declaration — the source tables, the target table, the upstream cohort's path, the feature columns this transformation produces, the label's output column, the entity's primary key and partition fields, the hooks and schemas referenced by name (swapped for their content-hashed artifact IDs), the CLI mixin that decides argument parsing, the Spark execution context for this profile (coalesce, memory, partition counts) — gets resolved to concrete values at compile time and baked into the artifact's `config.yaml` and an accompanying `zest_resource_context.py`. At run time, the compiled ETL does not call back to Zest; it never looks anything up by name. The declaration is name-oriented on the way in; the artifact is fully resolved on the way out.
+
+None of this would work without the runtime underneath. `lakehouse-spark-core` already knows how to set up a Spark session, read and write Iceberg tables, tune S3A, sequence Write-Audit-Publish, handle empty data, and emit structured logs. The compiler does not generate any of that. It emits a ten-line shell that inherits those capabilities from `ComposableETL` and composes the specific hooks this transformation wants. That split — a thin composition shell over a thick runtime — is what makes AST emission at apply time tractable. The compiler is stitching together primitives the runtime already provides, not writing a Spark job from scratch.
+
+Two deeper points follow.
+
+First, apply is idempotent. The server hashes the declared config first and compares it to the hash on the latest row. If the hashes match, the upsert returns `unchanged` and compilation never runs. Apply becomes "hash the declaration; compile only if the hash is new." That is the same check `plan` reports against.
+
+Second, apply is cheap because compilation is the expensive step, and it only runs when content changes. Storing artifacts is a write-through with content-addressed dedup. Re-applying a workspace with 200 unchanged resources does nothing on disk. A developer can tighten a hook, re-apply, see exactly which downstream transformations' hashes changed, and only pay for the ones that actually moved.
+
+## 3. Execution modes are compile-time, not runtime
+
+An ETL often needs daily incremental, full-table backfill, and historical reprocessing variants. Encoding those modes in one runtime branch—`if execution_mode == \"backfill\": ...`—puts the decision in the wrong layer.
+
+Zest replaces the `execution_mode` flag with **profiles**. Each named execution variant compiles at apply time into its own transformation, script, config, and content hash. A feature family with `daily`, `backfill`, and `historic` profiles produces three distinct artifacts, leaving the runtime script branch-free.
+
+```python
+client.feature_family(
+    name="spending_features",
+    profiles={
+        "daily":    {"sources": [...prune_date_partitions=True], "lookback_days": 95,  ...},
+        "backfill": {"cli_mixins": ["DateRangeCLIMixin"], "coalesce": (900, 300, 450), ...},
+        "historic": {"sources": [...tag="{process_date}"],   "lookback_days": 185, ...},
+    },
+)
+```
+
+Each profile gets to diverge arbitrarily. `daily` uses partition pruning and a single-date CLI mixin. `backfill` uses a date-range mixin and heavier coalesce settings. `historic` reads from a tagged Iceberg snapshot with a longer lookback. These are different operational shapes, not different runtime arguments. Trying to express them inside one branching script hides the divergence inside conditionals and forces Spark to choose plans at runtime.
+
+The broader principle is: **anything that can be decided at compile time should be decided at compile time.** Runtime conditionals cost complexity, debuggability, and operational blast radius. Three profiles become three registry rows, scripts, and config blobs—and zero runtime branches.
+
+## 4. The artifact layer should be dumb. The control plane should be smart.
+
+The ETL framework beneath Zest holds data; Zest holds relationships. All relational metadata lives in Postgres, while byte-level artifacts live in a content-addressed blob store with this interface:
+
+```python
+class ArtifactRepository(ABC):
+    async def store(self,    artifact: Artifact) -> str: ...
+    async def retrieve(self, artifact_id: str)  -> Artifact: ...
+    async def exists(self,   artifact_id: str)  -> bool: ...
+    async def delete(self,   artifact_id: str)  -> bool: ...
+```
+
+No list. No search. No filter. No query. No indexes. If you want to find something, you ask Postgres, which answers with an artifact id, which the store resolves to bytes. The store is a hash map.
+
+Artifact ids are content-addressed:
+
+```
+compiled_script-spending_features_daily-1.0.0-3f2a4b1c
+```
+
+The first three parts (`type-name-version`) are human-readable. The last part is the md5 of the content, truncated to 8 hex characters. Same content, same id, always. Writing the same bytes twice is a no-op. Rolling back a deploy is a pointer update on the transformation row, not a rebuild. Dedup across similar transformations is automatic.
+
+Keeping the store this constrained preserves a coherent control plane. \"Latest version of a named resource,\" \"all resources owned by this workspace,\" and \"all transformations deployed at a timestamp\" remain Postgres queries over existing metadata. The artifact store answers no relational questions and stays swappable: local filesystem in development, S3 in production, or another backend later. Four methods.
+
+## 5. Declare dependencies, not pipelines
+
+The standard mental model for a pipeline platform is "author a DAG." Users wire tasks together, specify execution dependencies, and the platform runs them in order. Zest has a graph too, but no one authors it as a pipeline. Users declare resources and name the resources they depend on. The platform assembles the graph from those declarations and uses it for three things that would otherwise be manual work.
+
+**Change propagation is automatic.** When the server hashes a resource, it folds in the resolved artifact ids of its declared upstream dependencies. If a hook's code changes, every transformation that references that hook gets a new hash on the next apply, and plan surfaces them as updated. Nobody wrote "if hook changes, invalidate dependents." The dependency-aware hash handles it.
+
+**Scope is a traversal.** When an operator requests \"deploy this model\" or \"build the orchestration payload for this cohort's daily profile,\" the platform walks the declared graph from a named root—an **anchor**—and collects the reachable set. `zest deploy model X` finds artifacts to ship to object storage; `POST /orchestration/query` builds an ordered transformation list for a downstream orchestrator. This walk reads declared edges rather than authoring an execution plan.
+
+**Ordering is free.** Apply processes resources in tier order, flushing between tiers so downstream declarations see upstream writes. A feature family that references a hook cannot be processed before the hook has a row in the registry. The ordering falls out of the declared graph; nobody writes it.
+
+Authoring a DAG of tasks gets you execution ordering and nothing else. Declaring dependencies gets you change propagation, scope queries, and ordering together — because all three read from the same graph.
+
+The operator benefit is that **the graph is the platform's single source of truth for relationships**. An engineer changing a hook does not have to find the ten transformations that use it. An engineer deploying a model does not have to list its upstream feature families. The graph already knows.
+
+## 6. Don't build an orchestrator. Build a payload factory.
+
+This is the smallest idea in scope and the largest in consequence. An initial orchestrator was built, operated, and then removed in favor of a narrower boundary.
+
+Zest does not schedule anything. It does not trigger jobs. It does not retry failed runs, it does not queue backfills, it does not alert on missing watermarks. It builds **payloads**. A payload is a strictly-typed JSON object describing one transformation that needs to run:
+
+```json
+{
+  "resource_type": "feature_family",
+  "resource_name": "spending_features",
+  "profile_name": "daily",
+  "entity_name": "customer",
+  "transformation_name": "spending_features_daily",
+  "transformation_id": "txn-a1b2c3...",
+  "job_type": "spark",
+  "version": 1,
+  "workspace": "test",
+  "execution_context": {
+    "driver_cores": 2,
+    "driver_memory": "3g",
+    "executor_instances": 2,
+    "executor_cores": 2,
+    "executor_memory": "4g",
+    "executor_node_labels": {
+      "spark-role": "memory-intensive-executor-shuffle"
+    }
+  },
+  "tags": ["features", "spending", "daily"]
+}
+```
+
+An Airflow DAG calls the orchestration query endpoint, receives an ordered list of payloads, and fans them out to Kubernetes SparkApplications. An agent could consume the same payloads and submit them to another backend. Zest decides what should run without owning the execution.
+
+The orchestration space is already crowded—Airflow, Prefect, Dagster, Argo, and Temporal all serve it. A declarative ML control plane still needs to determine what to run. Zest stays in that gap, with payloads in and artifacts out; the compute belongs to the chosen orchestrator.
+
+Refusing to own scheduling also preserves clear sources of truth. The orchestrator answers whether a job succeeded. The Iceberg table answers whether data landed. Zest declares intent without reporting outcomes, avoiding a third and conflicting execution record.
