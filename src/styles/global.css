@@ -291,22 +291,57 @@
     opacity: 0.6;
   }
 
+  .header-actions {
+    display: flex;
+    border-left: 1px solid var(--border);
+  }
+
+  .header-action,
   .theme-toggle {
     display: grid;
-    width: 3.4rem;
+    width: 3.1rem;
+    flex: 0 0 auto;
     padding: 0;
     place-items: center;
     background: transparent;
     color: var(--muted);
     border: 0;
-    border-left: 1px solid var(--border);
-    cursor: pointer;
     transition: background-color 140ms ease, color 140ms ease;
   }
 
+  .header-action {
+    border-right: 1px solid var(--border);
+    text-decoration: none;
+  }
+
+  .theme-toggle {
+    cursor: pointer;
+  }
+
+  .header-action:hover,
   .theme-toggle:hover {
     background: var(--accent-soft);
     color: var(--accent);
+  }
+
+  .header-action:focus-visible,
+  .theme-toggle:focus-visible {
+    outline-offset: -3px;
+  }
+
+  .header-action-icon {
+    width: 1.05rem;
+    height: 1.05rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.7;
+  }
+
+  .header-action-icon.is-filled {
+    fill: currentColor;
+    stroke: none;
   }
 
   .theme-icon {
@@ -1096,6 +1131,11 @@
       grid-template-columns: max-content minmax(0, 1fr) max-content;
     }
 
+    .header-action,
+    .theme-toggle {
+      width: 2.8rem;
+    }
+
     .wordmark {
       font-size: 0;
     }
@@ -1271,8 +1311,9 @@
       padding-inline: 0.65rem;
     }
 
+    .header-action,
     .theme-toggle {
-      width: 3rem;
+      width: 2.55rem;
     }
 
     .wordmark {
