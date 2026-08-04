@@ -10,22 +10,21 @@ interface Props {
   tags: string[];
   slug: string;
   heroImage: ImageMetadata;
-  featured?: boolean;
 }
 
-const { title, description, pubDate, tags, slug, heroImage, featured = false } = Astro.props;
+const { title, description, pubDate, tags, slug, heroImage } = Astro.props;
 const href = `${import.meta.env.BASE_URL.replace(/\/?$/, '/') }blog/${slug}/`;
 ---
 
-<article class:list={['blog-card', { featured }]}>
+<article class="blog-card">
   <a href={href} class="blog-card-link">
     <div class="blog-card-image">
       <Image
         src={heroImage}
         alt=""
-        width={featured ? 1120 : 720}
-        height={featured ? 520 : 400}
-        loading={featured ? 'eager' : 'lazy'}
+        width={720}
+        height={400}
+        loading="lazy"
       />
       <span class="blog-card-command" aria-hidden="true">:open</span>
     </div>

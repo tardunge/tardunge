@@ -7,59 +7,25 @@ import PostCard from '../../components/PostCard.astro';
 
 const posts = (await getCollection('blog', ({ data }) => data.status === 'published'))
   .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
-const [featuredPost, ...remainingPosts] = posts;
 ---
 
 <Layout
   title="Blog — Manoj Babu Katragadda"
   description="Field-tested writing on data platforms, Spark, Iceberg, MLOps, Kubernetes, and the operational details behind dependable systems."
-  image={featuredPost?.data.heroImage}
+  image={posts[0]?.data.heroImage}
 >
   <div class="page-frame blog-page-frame">
     <main class="editor blog-editor" id="main-content">
       <EditorHeader active="blog" />
 
-      <section class="blog-index-buffer" aria-labelledby="blog-title">
+      <section class="blog-index-buffer" aria-label="Articles">
         <div class="blog-index-rail" aria-hidden="true">
           <span>01</span><span>02</span><span>03</span><span>04</span><span>05</span><span>06</span><span>07</span><span>08</span>
         </div>
         <div class="blog-index-content">
-          <header class="blog-index-header">
-            <p class="blog-command"><span>:</span>read production-notes</p>
-            <h1 id="blog-title">Systems, after<br /><span>the happy path.</span></h1>
-            <div class="blog-index-intro">
-              <p>
-                Architecture decisions from operating Spark, Iceberg, Kubernetes, and ML platforms at production scale.
-              </p>
-              <a href={`${import.meta.env.BASE_URL.replace(/\/?$/, '/')}rss.xml`}>RSS feed <span aria-hidden="true">↗</span></a>
-            </div>
-          </header>
-
-          {featuredPost && (
-            <section class="blog-featured" aria-label="Latest article">
-              <p class="blog-section-label">// latest</p>
-              <PostCard
-                title={featuredPost.data.title}
-                description={featuredPost.data.description}
-                pubDate={featuredPost.data.pubDate}
-                tags={featuredPost.data.tags}
-                slug={featuredPost.id}
-                heroImage={featuredPost.data.heroImage}
-                featured
-              />
-            </section>
-          )}
-
-          <section class="blog-archive" aria-labelledby="archive-title">
-            <div class="blog-archive-heading">
-              <div>
-                <p class="blog-section-label">// archive</p>
-                <h2 id="archive-title">All field notes.</h2>
-              </div>
-              <span>{String(posts.length).padStart(2, '0')} buffers</span>
-            </div>
+          <div class="blog-post-grid">
             <div class="blog-grid">
-              {remainingPosts.map((post) => (
+              {posts.map((post) => (
                 <PostCard
                   title={post.data.title}
                   description={post.data.description}
@@ -70,7 +36,7 @@ const [featuredPost, ...remainingPosts] = posts;
                 />
               ))}
             </div>
-          </section>
+          </div>
         </div>
       </section>
 
