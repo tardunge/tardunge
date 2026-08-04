@@ -1116,7 +1116,7 @@
 
   @media (max-width: 720px) {
     html {
-      scroll-padding-top: 4.25rem;
+      scroll-padding-top: 7.25rem;
     }
 
     .page-frame {
@@ -1129,7 +1129,12 @@
 
     .editor-header {
       top: 0;
-      grid-template-columns: max-content minmax(0, 1fr) max-content;
+      grid-template-areas:
+        'wordmark actions'
+        'tabs tabs';
+      grid-template-columns: max-content minmax(0, 1fr);
+      grid-template-rows: repeat(2, 3.4rem);
+      min-height: 6.8rem;
     }
 
     .header-action,
@@ -1137,7 +1142,18 @@
       width: 2.8rem;
     }
 
+    .header-actions {
+      grid-area: actions;
+      justify-self: end;
+    }
+
+    .buffer-tabs {
+      grid-area: tabs;
+      border-top: 1px solid var(--border);
+    }
+
     .wordmark {
+      grid-area: wordmark;
       font-size: 0;
     }
 
