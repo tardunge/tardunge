@@ -2062,7 +2062,7 @@
 
   .article-author-avatar,
   .article-author-initials {
-    grid-row: 1 / 4;
+    grid-row: 1 / 5;
     width: 2.5rem;
     height: 2.5rem;
     border-radius: 50%;
@@ -2091,16 +2091,27 @@
     font-size: 0.58rem;
   }
 
-  .article-author a {
-    color: var(--accent);
-    font-size: 0.58rem;
-    text-decoration: none;
-    display: block;
-    margin-top: 0.12rem;
+  .article-author-socials {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
   }
 
-  .article-author a:hover {
-    color: var(--text);
+  .article-author-socials a {
+    display: inline-flex;
+    color: var(--muted);
+    text-decoration: none;
+  }
+
+  .article-author-socials a:hover {
+    color: var(--accent);
+  }
+
+  .article-author-socials svg {
+    width: 0.9rem;
+    height: 0.9rem;
+    fill: currentColor;
   }
 
   .article-back {
