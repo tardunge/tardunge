@@ -128,7 +128,6 @@
   .section-kicker,
   .statusline,
   .code-line,
-  .availability,
   .project-kind,
   .project-stack,
   .timeline-period,
@@ -212,7 +211,7 @@
     top: 0;
     z-index: 20;
     display: grid;
-    grid-template-columns: max-content minmax(0, 1fr) max-content;
+    grid-template-columns: max-content minmax(0, 1fr) max-content max-content;
     min-height: 3.4rem;
     background: var(--surface);
     border-bottom: 1px solid var(--border-strong);
@@ -289,6 +288,26 @@
     background: currentColor;
     box-shadow: none;
     opacity: 0.6;
+  }
+
+  .header-availability {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55rem;
+    padding: 0 1rem;
+    color: var(--muted);
+    border-left: 1px solid var(--border);
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 0.64rem;
+    letter-spacing: 0.01em;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  .header-availability strong {
+    color: var(--green);
+    font-weight: 600;
   }
 
   .header-actions {
@@ -423,22 +442,14 @@
     color: var(--green);
   }
 
-  .availability {
-    display: flex;
-    align-items: center;
-    gap: 0.65rem;
-    margin-bottom: 1.4rem;
-    color: var(--muted);
-    font-size: 0.75rem;
-    letter-spacing: 0.02em;
-  }
 
   .pulse {
     width: 0.48rem;
     height: 0.48rem;
+    flex: 0 0 auto;
     background: var(--green);
     border-radius: 50%;
-    box-shadow: 0 0 0 4px color-mix(in srgb, var(--green) 14%, transparent);
+    animation: availability-pulse 1.8s ease-out infinite;
   }
 
   .hero h1 {
@@ -1042,6 +1053,16 @@
   .delay-3 { animation-delay: 180ms; }
   .delay-4 { animation-delay: 250ms; }
 
+  @keyframes availability-pulse {
+    0% {
+      box-shadow: 0 0 0 0 color-mix(in srgb, var(--green) 38%, transparent);
+    }
+    70%,
+    100% {
+      box-shadow: 0 0 0 6px transparent;
+    }
+  }
+
   @keyframes reveal-up {
     from {
       opacity: 0;
@@ -1057,7 +1078,7 @@
 @layer responsive {
   @media (max-width: 980px) {
     .editor-header {
-      grid-template-columns: max-content minmax(0, 1fr) max-content;
+      grid-template-columns: max-content minmax(0, 1fr) max-content max-content;
     }
 
     .wordmark {
@@ -1116,7 +1137,7 @@
 
   @media (max-width: 720px) {
     html {
-      scroll-padding-top: 7.25rem;
+      scroll-padding-top: 9.15rem;
     }
 
     .page-frame {
@@ -1131,10 +1152,11 @@
       top: 0;
       grid-template-areas:
         'wordmark actions'
-        'tabs tabs';
+        'tabs tabs'
+        'status status';
       grid-template-columns: max-content minmax(0, 1fr);
-      grid-template-rows: repeat(2, 3.4rem);
-      min-height: 6.8rem;
+      grid-template-rows: 3.4rem 3.4rem 1.9rem;
+      min-height: 8.7rem;
     }
 
     .header-action,
@@ -1150,6 +1172,15 @@
     .buffer-tabs {
       grid-area: tabs;
       border-top: 1px solid var(--border);
+    }
+
+    .header-availability {
+      grid-area: status;
+      gap: 0.4rem;
+      padding-inline: 0.25rem;
+      border-top: 1px solid var(--border);
+      border-left: 0;
+      font-size: clamp(0.46rem, 2.35vw, 0.68rem);
     }
 
     .wordmark {
@@ -1192,15 +1223,6 @@
       text-overflow: ellipsis;
     }
 
-    .availability {
-      align-items: flex-start;
-      line-height: 1.45;
-    }
-
-    .pulse {
-      flex: 0 0 auto;
-      margin-top: 0.28rem;
-    }
 
     .hero h1 br {
       display: none;
