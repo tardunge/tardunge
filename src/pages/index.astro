@@ -299,11 +299,10 @@ const skillGroups = [
         <div class="buffer-content">
           <div class="section-heading">
             <div>
-              <p class="section-kicker">// latest articles</p>
-              <h2 id="writing-title">Systems, explained.</h2>
+              <p class="section-kicker">// blog</p>
+              <h2 id="writing-title">Latest writing.</h2>
             </div>
             <div class="section-heading-action">
-              <p>Production notes on data, ML, Kubernetes, Spark, and lakehouse architecture.</p>
               <a class="text-link" href="/blog">Open all articles <span aria-hidden="true">→</span></a>
             </div>
           </div>
@@ -353,14 +352,15 @@ const skillGroups = [
     const bufferTabs = document.querySelector<HTMLElement>('.buffer-tabs');
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const sectionLinks = Array.from(document.querySelectorAll<HTMLAnchorElement>('[data-section-link]'));
+    const navTabs = Array.from(document.querySelectorAll<HTMLAnchorElement>('.buffer-tab'));
     const sections = Array.from(document.querySelectorAll<HTMLElement>('section[id]'));
 
     const activateSection = (id: string) => {
-      sectionLinks.forEach((link) => {
-        const active = link.dataset.sectionLink === id;
+      navTabs.forEach((link) => {
+        const active = link.dataset.sectionLink === id || (id === 'writing' && link.dataset.navId === 'blog');
         link.classList.toggle('active', active);
         if (active) {
-          link.setAttribute('aria-current', 'location');
+          if (link.dataset.sectionLink) link.setAttribute('aria-current', 'location');
           const hiddenLeft = link.offsetLeft < (bufferTabs?.scrollLeft ?? 0);
           const hiddenRight = link.offsetLeft + link.offsetWidth > (bufferTabs?.scrollLeft ?? 0) + (bufferTabs?.clientWidth ?? 0);
           if (bufferTabs && (hiddenLeft || hiddenRight)) {

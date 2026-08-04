@@ -11,8 +11,7 @@ const navigation = [
   { id: 'about', label: 'about.md' },
   { id: 'work', label: 'work.ts' },
   { id: 'experience', label: 'career.log' },
-  { id: 'writing', label: 'notes.md' },
-  { id: 'blog', label: 'blog.md' },
+  { id: 'blog', label: 'blog' },
   { id: 'contact', label: 'contact.sh' },
 ];
 
@@ -36,6 +35,7 @@ const hrefFor = (id: string) => {
           class:list={['buffer-tab', { active: isActive }]}
           href={hrefFor(item.id)}
           data-section-link={isSectionLink ? item.id : undefined}
+          data-nav-id={item.id}
           aria-current={isActive ? (item.id === 'blog' ? 'page' : 'location') : undefined}
         >
           <span class="tab-dot" aria-hidden="true"></span>

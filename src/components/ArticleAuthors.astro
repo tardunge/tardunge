@@ -1,13 +1,13 @@
 ---
 import { Image } from 'astro:assets';
-import { authors } from '../data/authors';
+import { authors, type AuthorInfo } from '../data/authors';
 
 interface Props {
   names: string[];
 }
 
 const { names } = Astro.props;
-const profiles = names.map((name) => authors[name] ?? { name, role: '', initials: name.slice(0, 2).toUpperCase() });
+const profiles = names.map((name): AuthorInfo => authors[name] ?? { name, role: '', initials: name.slice(0, 2).toUpperCase() });
 ---
 
 <div class="article-authors" aria-label="Article authors">
@@ -21,6 +21,11 @@ const profiles = names.map((name) => authors[name] ?? { name, role: '', initials
       <div>
         <p>{author.name}</p>
         {author.role && <span>{author.role}</span>}
+        {author.linkedin && (
+          <a href={author.linkedin} target="_blank" rel="noreferrer">
+            {author.linkedinLabel} <span aria-hidden="true">↗</span>
+          </a>
+        )}
       </div>
     </div>
   ))}
