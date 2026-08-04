@@ -1603,6 +1603,14 @@
 
   .blog-grid {
     grid-template-columns: 1fr;
+    gap: clamp(0.75rem, 1.5vw, 1.25rem);
+    overflow: visible;
+    background: transparent;
+    border: 0;
+  }
+
+  .blog-grid .blog-card {
+    border: 1px solid var(--border-strong);
   }
 
   .article-breadcrumb {
