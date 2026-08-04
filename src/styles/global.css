@@ -594,10 +594,20 @@
   }
 
   .console-body {
+    display: grid;
     gap: 0.8rem;
     padding: 1.15rem;
     overflow-x: auto;
     white-space: nowrap;
+  }
+
+  .skill-line {
+    display: flex;
+    align-items: baseline;
+  }
+
+  .skill-expression {
+    min-width: 0;
   }
 
   .console-prompt {
@@ -1271,6 +1281,13 @@
 
     .console-body {
       padding-left: 0.25rem;
+      overflow-x: visible;
+      white-space: normal;
+    }
+
+    .skill-line {
+      align-items: flex-start;
+      line-height: 1.65;
     }
 
     .project-card {

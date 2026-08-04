@@ -110,13 +110,21 @@ const experience = [
   },
 ];
 
-const latestPosts = (await getPublishedPosts()).slice(0, 3);
+const publishedPosts = await getPublishedPosts();
+const pinnedPostId = 'spark-merge-optimization-from-60-to-4-minutes';
+const pinnedPost = publishedPosts.find((post) => post.id === pinnedPostId);
+const latestPosts = (
+  pinnedPost
+    ? [pinnedPost, ...publishedPosts.filter((post) => post.id !== pinnedPostId)]
+    : publishedPosts
+).slice(0, 3);
 
 const skillGroups = [
-  ['Kubernetes', 'Terraform', 'Docker', 'AWS', 'GCP'],
-  ['Spark', 'Iceberg', 'Trino', 'Airflow', 'Prefect'],
-  ['Go', 'Python', 'Rust', 'Java', 'Node.js'],
-
+  { name: 'infra', skills: ['Kubernetes', 'Terraform', 'Docker', 'AWS', 'GCP'] },
+  { name: 'data', skills: ['Spark', 'Iceberg', 'Trino', 'Airflow', 'Prefect'] },
+  { name: 'languages', skills: ['Go', 'Python', 'Rust', 'Java', 'Node.js', 'TypeScript', 'Lua', 'Nix'] },
+  { name: 'environment', skills: ['Unix', 'Zsh', 'Tmux', 'Neovim', 'OMP'] },
+  { name: 'databases', skills: ['Postgres', 'BigQuery', 'Redshift', 'Talaria'] },
 ];
 ---
 
@@ -182,17 +190,19 @@ const skillGroups = [
           </div>
 
           <div class="skills-console" aria-label="Core technology stack">
-            <div class="console-title"><span>stack.lua</span><span>3 groups</span></div>
+            <div class="console-title"><span>stack.lua</span><span>{skillGroups.length} groups</span></div>
             <div class="console-body">
               {skillGroups.map((group, index) => (
                 <div class="skill-line">
                   <span class="console-prompt" aria-hidden="true">{index + 1}:</span>
-                  <span class="syntax-property">{['infra', 'data', 'languages'][index]}</span>
-                  <span class="syntax-operator"> = &#123; </span>
-                  {group.map((skill, skillIndex) => (
-                    <><span class="syntax-string">"{skill}"</span>{skillIndex < group.length - 1 && <span class="syntax-operator">, </span>}</>
-                  ))}
-                  <span class="syntax-operator"> &#125;</span>
+                  <span class="skill-expression">
+                    <span class="syntax-property">{group.name}</span>
+                    <span class="syntax-operator"> = &#123; </span>
+                    {group.skills.map((skill, skillIndex) => (
+                      <><span class="syntax-string">"{skill}"</span>{skillIndex < group.skills.length - 1 && <span class="syntax-operator">, </span>}</>
+                    ))}
+                    <span class="syntax-operator"> &#125;</span>
+                  </span>
                 </div>
               ))}
             </div>
