@@ -26,46 +26,18 @@ I also contribute to and work around Apache Iceberg, Trino, LakeFS, Prefect, Cub
 ## Core stack
 
 ```text
-platform  Kubernetes · Terraform · Docker · AWS · GCP
-data      Spark · Iceberg · Trino · Airflow · Prefect
-code      Go · Python · Rust · Java · Node.js
+platform     Kubernetes · Terraform · Docker · AWS · GCP
+data         Spark · Iceberg · Trino · Airflow · Prefect
+languages    Go · Python · Rust · Java · Node.js · TypeScript · Lua · Nix
+environment  Unix · Zsh · Tmux · Neovim · OMP
+databases    Postgres · BigQuery · Redshift · Talaria
 ```
 
 ## Contact
 
 - Website: [tardunge.com](https://tardunge.com)
 - LinkedIn: [manojbabuiit](https://linkedin.com/in/manojbabuiit)
-- Email: [manojbabuiit@gmail.com](mailto:manojbabuiit@gmail.com?subject=Fractional%20data%20platform%20engagement)
+- Email: [manojbabukatragadda@gmail.com](mailto:manojbabukatragadda@gmail.com?subject=Fractional%20engineering%20engagement)
 
 I’m available for fractional engineering engagements across data platforms, ML infrastructure, backend systems, and developer platforms.
 
-## This repository
-
-This repository is the source for both my GitHub profile and [tardunge.com](https://tardunge.com):
-
-```text
-README.md    → GitHub profile
-Astro dist/  → tardunge.com via GitHub Pages
-```
-
-The website uses Astro and Vite, IBM Plex Sans and IBM Plex Mono, and a responsive Nord/Vim-inspired interface. It ships as static HTML and CSS with minimal client-side TypeScript.
-
-### Local development
-
-Requirements: Node.js 22.12 or newer, npm, and optionally [direnv](https://direnv.net/) for the committed local network configuration.
-
-```sh
-direnv allow
-npm install
-npm run dev
-```
-
-The development server runs at [http://localhost:3333](http://localhost:3333).
-
-| Command | Purpose |
-| --- | --- |
-| `npm run dev` | Start the Astro development server |
-| `npm run build` | Generate the production site in `dist/` |
-| `npm run preview` | Preview the production build locally |
-
-Most website content is defined in `src/pages/index.astro`; visual tokens and responsive styles live in `src/styles/global.css`. Pushes to `main` run `.github/workflows/deploy.yml` and deploy the production build to GitHub Pages using the `tardunge.com` custom domain.
