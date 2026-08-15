@@ -63,6 +63,12 @@ const imageURL = resolvedImage ? new URL(resolvedImage, Astro.site) : undefined;
       document.documentElement.dataset.theme = initialTheme;
       document.querySelector('meta[name="theme-color"]')?.setAttribute('content', initialTheme === 'dark' ? '#2e3440' : '#eceff4');
     </script>
+    <script
+      is:inline
+      data-goatcounter="https://tardunge-com.goatcounter.com/count"
+      async
+      src="https://gc.zgo.at/count.js"
+    ></script>
   </head>
   <body>
     <a class="skip-link" href="#main-content">Skip to content</a>
