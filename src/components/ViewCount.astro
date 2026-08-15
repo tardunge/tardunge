@@ -15,6 +15,7 @@ const { path } = Astro.props;
 
 <script>
   const counterEndpoint = 'https://tardunge-com.goatcounter.com/counter/';
+  const counterStart = '2026-01-01';
   const counters = document.querySelectorAll<HTMLElement>('[data-view-count-path]:not([data-view-count-ready])');
 
   counters.forEach((counter) => {
@@ -24,7 +25,7 @@ const { path } = Astro.props;
 
     if (!path || !value) return;
 
-    fetch(`${counterEndpoint}${encodeURIComponent(path)}.json`, {
+    fetch(`${counterEndpoint}${encodeURIComponent(path)}.json?start=${counterStart}`, {
       headers: { Accept: 'application/json' },
     })
       .then(async (response) => {
