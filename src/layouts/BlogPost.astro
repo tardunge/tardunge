@@ -5,6 +5,7 @@ import EditorHeader from '../components/EditorHeader.astro';
 import EditorStatusline from '../components/EditorStatusline.astro';
 import FormattedDate from '../components/FormattedDate.astro';
 import ArticleAuthors from '../components/ArticleAuthors.astro';
+import ViewCount from '../components/ViewCount.astro';
 
 type Props = CollectionEntry<'blog'>['data'] & {
   slug: string;
@@ -53,6 +54,7 @@ const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
               <span>{readingMinutes} min read</span>
               <span>·</span>
               <span>{team}</span>
+              <ViewCount path={`${base}blog/${slug}/`} />
             </div>
             <h1>{title}</h1>
             <p>{description}</p>

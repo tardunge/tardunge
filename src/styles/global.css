@@ -1809,6 +1809,21 @@
     font-size: 0.65rem;
   }
 
+  .view-count:not([hidden]) {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.28rem;
+  }
+
+  .view-count-separator {
+    margin-right: 0.2rem;
+  }
+
+  .view-count-icon {
+    color: var(--green);
+    font-size: 0.72rem;
+  }
+
   .blog-card h2 {
     margin: 1rem 0 0.9rem;
     font-size: clamp(1.45rem, 2.7vw, 2.2rem);

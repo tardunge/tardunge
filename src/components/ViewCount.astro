@@ -1,0 +1,44 @@
+---
+interface Props {
+  path: string;
+}
+
+const { path } = Astro.props;
+---
+
+<span class="view-count" data-view-count-path={path} hidden aria-live="polite">
+  <span class="view-count-separator" aria-hidden="true">·</span>
+  <span class="view-count-icon" aria-hidden="true">◉</span>
+  <span data-view-count-value></span>
+  <span>views</span>
+</span>
+
+<script>
+  const counterEndpoint = 'https://tardunge-com.goatcounter.com/counter/';
+  const counters = document.querySelectorAll<HTMLElement>('[data-view-count-path]:not([data-view-count-ready])');
+
+  counters.forEach((counter) => {
+    counter.dataset.viewCountReady = 'true';
+    const path = counter.dataset.viewCountPath;
+    const value = counter.querySelector<HTMLElement>('[data-view-count-value]');
+
+    if (!path || !value) return;
+
+    fetch(`${counterEndpoint}${encodeURIComponent(path)}.json`, {
+      headers: { Accept: 'application/json' },
+    })
+      .then((response) => {
+        if (!response.ok) throw new Error('View count unavailable');
+        return response.json() as Promise<{ count?: string }>;
+      })
+      .then(({ count }) => {
+        if (!count) return;
+        value.textContent = count;
+        counter.setAttribute('aria-label', `${count} page views`);
+        counter.hidden = false;
+      })
+      .catch(() => {
+        // Counters stay hidden when analytics are blocked or unavailable.
+      });
+  });
+</script>

@@ -2,6 +2,7 @@
 import { Image } from 'astro:assets';
 import type { ImageMetadata } from 'astro';
 import FormattedDate from './FormattedDate.astro';
+import ViewCount from './ViewCount.astro';
 
 interface Props {
   title: string;
@@ -13,7 +14,7 @@ interface Props {
 }
 
 const { title, description, pubDate, tags, slug, heroImage } = Astro.props;
-const href = `${import.meta.env.BASE_URL.replace(/\/?$/, '/') }blog/${slug}/`;
+const href = `${import.meta.env.BASE_URL.replace(/\/?$/, '/')}blog/${slug}/`;
 ---
 
 <article class="blog-card">
@@ -33,6 +34,7 @@ const href = `${import.meta.env.BASE_URL.replace(/\/?$/, '/') }blog/${slug}/`;
         <FormattedDate date={pubDate} />
         <span>·</span>
         <span>{tags.slice(0, 2).join(' / ')}</span>
+        <ViewCount path={href} />
       </div>
       <h2>{title}</h2>
       <p>{description}</p>
