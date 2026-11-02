@@ -26,7 +26,7 @@ const projects = [
     kind: 'Data platform',
     description:
       'A composable PySpark ETL framework with lifecycle hooks, plugin-based extractors and compactors, plus write-audit-publish data quality gates.',
-    impact: 'Cut per-pipeline code by 75% and became the execution backbone for ML operations.',
+    impact: '75% less total code per comparable pipeline; a reusable execution backbone for ML operations.',
     stack: ['PySpark', 'Iceberg', 'Kubernetes', 'WAP'],
     articleHref: '/blog/building-a-composable-etl-framework',
     articleLabel: 'Read the framework design',
@@ -54,14 +54,84 @@ const projects = [
     articleHref: '/blog/running-spark-on-kubernetes',
     articleLabel: 'Read the Kubernetes playbook',
   },
+  {
+    index: '05',
+    title: 'Talaria internals & Spark connector',
+    kind: 'Database systems',
+    description:
+      'Refactored ingestion and flush engines around shared block/row encoding, separated Parquet and ORC conversion from internal storage, and built Google Cloud integrations. Authored a Java DataSource V2 connector with gRPC reads, vectorized batches, and checkpointed micro-batch streaming.',
+    impact: 'Connected Talaria data to Spark batch and streaming workloads and downstream Iceberg tables.',
+    stack: ['Go', 'Java', 'gRPC', 'Spark'],
+    href: 'https://github.com/tardunge/talaria',
+    articleHref: 'https://github.com/talariadb/talaria-spark-connector',
+    articleLabel: 'Explore the Spark connector',
+  },
+  {
+    index: '06',
+    title: 'Spark MERGE performance',
+    kind: 'Query execution',
+    description:
+      'Optimized a daily MERGE on a 2-billion-row Iceberg table using storage partition joins and shuffle hash join hints, with execution settings that keep Spark from reverting to sort merge.',
+    impact: 'Reduced the production job runtime from 60 minutes to 4 minutes.',
+    stack: ['Spark', 'Iceberg', 'SQL'],
+    articleHref: '/blog/spark-merge-optimization-from-60-to-4-minutes',
+    articleLabel: 'Read the query optimization',
+  },
+  {
+    index: '07',
+    title: 'Spark S3 shuffle fork',
+    kind: 'Distributed execution',
+    description:
+      'Maintained a fork of the S3 shuffle plugin: repaired cache and prefetch deadlocks, bounded prefetch waits, added Spark 4.0/Scala 2.13 support, and declared reliable storage for executor decommissioning.',
+    impact: 'Supported Spark on Kubernetes with spot executors: measured 90% lower Spark compute cost, with individual production jobs processing 10TB+ of input per run.',
+    stack: ['Spark', 'Scala', 'S3', 'Kubernetes'],
+    href: 'https://github.com/tardunge/spark-s3-shuffle',
+    articleHref: '/blog/taming-s3-shuffle-at-scale',
+    articleLabel: 'Read the production repairs',
+  },
+  {
+    index: '08',
+    title: 'Airflow orchestration & DAG delivery',
+    kind: 'Platform operations',
+    description:
+      'Extended Kubernetes orchestration with Ray operators that reattach to running jobs, asynchronous Redis triggers, and hot-reloaded DAG bundles. Built reusable deployment code for more than 10 Airflow systems at AirAsia, each running over 200 jobs daily.',
+    impact: 'Delivered DAG bundles without Helm upgrades or pod restarts.',
+    stack: ['Python', 'Airflow', 'Ray', 'Kubernetes'],
+    articleHref: '/blog/airflow-dag-bundles-without-helm-upgrades',
+    articleLabel: 'Read the DAG delivery design',
+  },
+  {
+    index: '09',
+    title: 'Prefect lakeFS integration',
+    kind: 'Open source',
+    description:
+      'Authored a Prefect integration for lakeFS housekeeping using the lakeFS API, extending workflow orchestration to data-versioning operations.',
+    impact: 'Reusable lakeFS housekeeping tasks within Prefect workflows.',
+    stack: ['Python', 'Prefect', 'lakeFS'],
+    href: 'https://github.com/limx0/prefect-lakefs',
+    articleHref: 'https://github.com/limx0/prefect-lakefs',
+    articleLabel: 'Explore the integration',
+  },
+  {
+    index: '10',
+    title: 'Bob & kmux-status',
+    kind: 'Supporting developer tools',
+    description:
+      'Built Bob, a voice interface for AI coding agents integrating Pi, OMP, and Claude with local speech processing, MCP profiles, and durable background jobs. Built kmux-status to surface Kubernetes context in the tmux status line.',
+    impact: 'Applied platform engineering to everyday developer workflows, from agent execution to terminal context.',
+    stack: ['TypeScript', 'NestJS', 'React', 'tmux'],
+    href: 'https://github.com/tardunge/bob',
+    articleHref: 'https://github.com/tardunge/kmux-status',
+    articleLabel: 'Explore kmux-status',
+  },
 ];
 
 const experience = [
   {
     company: 'ZerotoOne AI',
-    location: 'Remote · Bali',
+    location: 'Remote · Asia',
     period: 'Apr 2025 — Apr 2026',
-    roles: [{ title: 'Principal Platform Engineer · Consultant', period: 'Apr 2025 — Apr 2026' }],
+    roles: [{ title: 'Principal Platform Engineer', period: 'Apr 2025 — Apr 2026' }],
     summary:
       'Built the data and ML platform layer: cost-efficient Spark on Kubernetes, declarative MLOps, composable lakehouse execution, custom Airflow providers, and Rust-native Iceberg tooling.',
     articleHref: '/blog',
@@ -76,7 +146,7 @@ const experience = [
       { title: 'Senior Data Engineer · Experimentation', period: 'Sep 2019 — Dec 2020' },
     ],
     summary:
-      'Pioneered data mesh adoption, designed event-driven backend foundations, built experimentation systems, and mentored engineers across the platform, software, and data organizations.',
+      'Refactored Talaria database internals and built its Spark connector and Google Cloud integrations. Delivered experimentation systems, data mesh platforms, and reusable Airflow infrastructure, while mentoring engineers across software and data teams.',
     articleHref: null,
   },
   {
@@ -129,8 +199,8 @@ const skillGroups = [
 ---
 
 <Layout
-  title="Manoj Babu Katragadda — Fractional Engineer, Data Platforms"
-  description="Fractional engineer for data and platform systems, based in Bali and helping teams build dependable infrastructure."
+  title="Manoj Babu Katragadda — Principal Engineer, Data Platforms"
+  description="Principal Engineer specializing in reusable data platforms, distributed systems, and MLOps. Remote · Asia. Open to full-time engineering roles."
 >
   <div class="page-frame">
     <main class="editor" id="main-content">
@@ -145,35 +215,35 @@ const skillGroups = [
             <span class="syntax-keyword">const</span>
             <span class="syntax-property"> role</span>
             <span class="syntax-operator"> = </span>
-            <span class="syntax-string">"Fractional Engineer — Data Platforms"</span><span class="syntax-operator">;</span>
+            <span class="syntax-string">"Principal Engineer — Data Platforms"</span><span class="syntax-operator">;</span>
           </p>
           <h1 id="hero-title" class="reveal delay-2">
             Built platforms that make<br />{' '}
             <span>hard systems feel routine.</span>
           </h1>
           <p class="hero-intro reveal delay-3">
-            I’m Manoj Babu Katragadda. I design the infrastructure behind data, ML, and backend systems—turning distributed complexity into dependable paths for teams to ship.
+            I’m Manoj Babu Katragadda, a Principal Engineer building reusable data and ML platforms. I combine distributed systems, database internals, connectors, and performance engineering to turn production complexity into dependable paths for teams to ship.
           </p>
           <p class="hero-fit reveal delay-3">
-            <span>Available:</span> focused fractional engagements where platform complexity, delivery pressure, and the cost of a wrong decision are all high.
+            <span>Open to full-time roles:</span> data platforms, distributed systems, and MLOps teams that value hands-on architecture, shipping, and long-term ownership. Remote · Asia.
           </p>
           <div class="hero-actions reveal delay-4">
-            <a class="button primary" href="#engage">Discuss an engagement <span aria-hidden="true">↓</span></a>
+            <a class="button primary" href="#team-fit">Explore team fit <span aria-hidden="true">↓</span></a>
             <a class="button secondary" href="#work">Explore selected work <span aria-hidden="true">↓</span></a>
           </div>
 
           <dl class="impact-grid reveal delay-4" aria-label="Selected outcomes">
             <div>
               <dt>90%</dt>
-              <dd>lower Spark infrastructure cost</dd>
+              <dd>lower Spark compute cost</dd>
             </div>
             <div>
               <dt>10TB+</dt>
-              <dd>production datasets processed</dd>
+              <dd>input per individual production job run</dd>
             </div>
             <div>
               <dt>75%</dt>
-              <dd>less code per data pipeline</dd>
+              <dd>less total code per comparable pipeline</dd>
             </div>
           </dl>
 
@@ -254,49 +324,49 @@ const skillGroups = [
         </div>
       </section>
 
-      <section class="editor-buffer section engagement-section" id="engage" aria-labelledby="engagement-title">
+      <section class="editor-buffer section engagement-section" id="team-fit" aria-labelledby="team-fit-title">
         <div class="line-numbers" aria-hidden="true"><span>82</span><span>83</span><span>84</span><span>85</span><span>86</span></div>
         <div class="buffer-content">
           <div class="engagement-intro">
             <div>
-              <p class="section-kicker">// fractional engineering</p>
-              <h2 id="engagement-title">Speed comes from<br />fewer wrong turns.</h2>
+              <p class="section-kicker">// full-time engineering</p>
+              <h2 id="team-fit-title">Build with the team.<br />Own what ships.</h2>
             </div>
             <p>
-              Fractional engineering works when delay is expensive. I narrow the scope, make the difficult architecture calls, ship production code, and leave the team with systems it can own.
+              I’m looking for a full-time Principal Engineer role building data and ML platforms. I work from architecture through implementation and production operations, staying close to the systems and the engineers who depend on them.
             </p>
           </div>
 
           <div class="engagement-panel">
             <div class="engagement-triggers">
-              <p class="engagement-label">bring_me_in_when =</p>
+              <p class="engagement-label">where_i_contribute =</p>
               <ol>
-                <li><span>01</span><p>A data platform is too slow, expensive, or unreliable.</p></li>
-                <li><span>02</span><p>A platform initiative is stuck between design and production.</p></li>
-                <li><span>03</span><p>The team needs hands-on senior execution, not another strategy deck.</p></li>
-                <li><span>04</span><p>A costly technical decision has to be made correctly—and quickly.</p></li>
+                <li><span>01</span><p>Build reusable platform interfaces that reduce repeated pipeline and infrastructure work.</p></li>
+                <li><span>02</span><p>Trace performance and reliability problems through query plans, connectors, storage, and distributed execution.</p></li>
+                <li><span>03</span><p>Turn architecture decisions into production code, working alongside engineers and mentoring through delivery.</p></li>
+                <li><span>04</span><p>Own the long-term evolution of platforms: operability, maintainability, and the needs of their users.</p></li>
               </ol>
             </div>
 
-            <aside class="engagement-model" aria-label="Fractional engagement delivery model">
+            <aside class="engagement-model" aria-label="Full-time engineering contribution">
               <div class="engagement-model-title">
-                <span>engagement.lua</span>
+                <span>team_fit.lua</span>
                 <span>active</span>
               </div>
               <div class="engagement-model-body">
-                <div class="engagement-contract" aria-label="Engagement properties">
-                  <p><span class="syntax-property">mode</span><span class="syntax-operator"> = </span><span class="syntax-string">"hands-on"</span></p>
-                  <p><span class="syntax-property">scope</span><span class="syntax-operator"> = </span><span class="syntax-string">"focused"</span></p>
-                  <p><span class="syntax-property">owner</span><span class="syntax-operator"> = </span><span class="syntax-string">"your team"</span></p>
+                <div class="engagement-contract" aria-label="Role preferences">
+                  <p><span class="syntax-property">role</span><span class="syntax-operator"> = </span><span class="syntax-string">"full-time"</span></p>
+                  <p><span class="syntax-property">approach</span><span class="syntax-operator"> = </span><span class="syntax-string">"hands-on"</span></p>
+                  <p><span class="syntax-property">ownership</span><span class="syntax-operator"> = </span><span class="syntax-string">"long-term"</span></p>
                 </div>
-                <div class="engagement-flow" aria-label="Scope tightly, ship the critical path, transfer ownership">
-                  <span>scope tightly</span>
+                <div class="engagement-flow" aria-label="Design together, ship production systems, own their evolution">
+                  <span>design together</span>
                   <span aria-hidden="true">→</span>
-                  <span>ship the critical path</span>
+                  <span>ship production systems</span>
                   <span aria-hidden="true">→</span>
-                  <span>transfer ownership</span>
+                  <span>own their evolution</span>
                 </div>
-                <a class="button primary" href="#contact">Bring me the bottleneck <span aria-hidden="true">↓</span></a>
+                <a class="button primary" href="#contact">Discuss a full-time role <span aria-hidden="true">↓</span></a>
               </div>
             </aside>
           </div>
@@ -388,14 +458,14 @@ const skillGroups = [
         <div class="line-numbers" aria-hidden="true"><span>168</span><span>169</span><span>170</span><span>171</span></div>
         <div class="buffer-content contact-content">
           <p class="section-kicker">// contact.sh</p>
-          <h2 id="contact-title">Let’s make the difficult part boring.</h2>
+          <h2 id="contact-title">Let’s build the next platform together.</h2>
           <p>
-            Send me the problem, the constraints, and what needs to move faster. I’ll tell you directly whether I can help and what a focused engagement should cover.
+            Hiring a full-time Principal Engineer? Tell me about your team, the data or ML platform you’re building, and the engineering challenges ahead. I’m interested in hands-on roles with long-term technical ownership.
           </p>
           <div class="contact-meta" aria-label="Contact details">
-            <span>problem</span><span>constraints</span><span>timeline</span><span>UTC+8</span>
+            <span>full-time</span><span>Principal Engineer</span><span>Remote · Asia</span>
           </div>
-          <a class="email-link" href="mailto:manojbabukatragadda@gmail.com?subject=Fractional%20engineering%20engagement">
+          <a class="email-link" href="mailto:manojbabukatragadda@gmail.com?subject=Full-time%20Principal%20Engineer%20role">
             manojbabukatragadda@gmail.com <span aria-hidden="true">↗</span>
           </a>
           <div class="social-links">

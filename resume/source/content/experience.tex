@@ -1,0 +1,73 @@
+\cvsection{Experience}
+\begin{cventries}
+
+\cventry
+  {Principal Platform Engineer}
+  {Zerotoone AI}
+  {https://www.linkedin.com/company/zerotoone}
+  {Remote · Asia}
+  {Apr 2025 -- Apr 2026}
+  {\begin{cvitems}
+    \item {Built \textbf{Zest, an MLOps platform} with \textbf{multi-tenant workspace isolation} and a declarative Python SDK covering the ML lifecycle from data segmentation to model deployment. Its AST-based compiler generates Spark jobs, resolves resource dependencies, and versions artifacts. \cvlink{https://tardunge.com/blog/what-we-learned-building-our-ml-platform/}{[Case Study]}}
+    \item {Designed a \textbf{composable PySpark ETL framework} for feature, label, and training-data pipelines, reducing total code per comparable pipeline by \textbf{75\%}. Reusable hooks, pluggable extractors and writers, and Write-Audit-Publish quality gates standardize execution across environments. \cvlink{https://tardunge.com/blog/building-a-composable-etl-framework/}{[Case Study]}}
+    \item {Reduced the runtime of a daily Spark MERGE job from \textbf{60 minutes to 4 minutes} on a \textbf{2-billion-row Apache Iceberg table} using storage partition joins and shuffle hash join hints. \cvlink{https://tardunge.com/blog/spark-merge-optimization-from-60-to-4-minutes/}{[Case Study]}}
+    \item {Deployed Spark on Kubernetes with S3-backed shuffle and spot executors, reducing \textbf{Spark compute costs by 90\%}. Individual production ETL jobs processed \textbf{10 TB+ of input per run}. \cvlink{https://tardunge.com/blog/taming-s3-shuffle-at-scale/}{[Case Study]}}
+    \item {Extended \textbf{Airflow} for Kubernetes job orchestration and DAG delivery: Ray operators with fault-tolerant reattachment, asynchronous Redis triggers, and hot-reloaded DAG bundles that avoid Helm upgrades and pod restarts. \cvlink{https://tardunge.com/blog/airflow-dag-bundles-without-helm-upgrades/}{[Case Study]}}
+  \end{cvitems}}
+
+\cventry
+  {Principal Engineer (2 yrs)}
+  {AirAsia Berhad · 4 yrs 5 mos}
+  {https://www.linkedin.com/company/airasia}
+  {Kuala Lumpur, Malaysia}
+  {Sep 2019 -- Feb 2024}
+  {\begin{cvitems}
+    \item {Refactored \textbf{Talaria's ingestion and flush engines} around shared block/row encoding, separating internal storage from connector-level conversion for formats such as \textbf{Parquet and ORC}.}
+    \item {Developed and open-sourced Talaria's \cvlink{https://github.com/talariadb/talaria-spark-connector}{Apache Spark connector} in Java using \textbf{DataSource V2}: gRPC reads, vectorized columnar batches, and checkpointed micro-batch streaming; enabled processing of Talaria data in Spark and writing the results to Apache Iceberg.}
+    \item {Built Talaria integrations for \textbf{Google Cloud Pub/Sub, BigQuery, and Google Cloud Storage}: real-time event ingestion with exactly-once delivery through Pub/Sub, and data export to BigQuery and GCS.}
+    \item {Implemented a \textbf{data mesh} using Airflow for orchestration, Spark and Apache Iceberg for lakehouse processing and storage, Trino and Cube.js for self-service analytics, and Backstage for governance.}
+    \item {Built the \textbf{experimentation platform} with a Go CQRS framework that compiles experiment definitions into Lua, an event-sourcing foundation for complex event processing, and a streaming framework that feeds evaluation data into the statistics engine. Worked with product managers to define experiments and evaluation criteria.}
+    \item {Created reusable deployment code for \textbf{more than 10 Airflow systems on Kubernetes}, each running \textbf{over 200 jobs daily}, replacing per-team single-node setups. Built Terraform modules, Kubernetes manifests, and GitLab CI templates for Google Kubernetes Engine.}
+    \item {Mentored a staff data engineer building a Snowplow-inspired \textbf{Python ETL framework} using medallion architecture and a senior software engineer building a \textbf{Backstage governance portal} for access policies, JSON Schema definitions for events, A/B experiments, and JWT issuance.}
+    \item {Built a NestJS taxi queue service using onion architecture and established its framework as the foundation for legacy Node.js service migrations. Decoupled business entities from persistence to support migration between MongoDB and Firestore; implemented Redis locking for caching and event-driven messaging via a \cvlink{https://github.com/p-fedyukovich/nestjs-google-pubsub-microservice}{\textcolor{darktext}{Pub/Sub controller}}.}
+  \end{cvitems}}
+
+\end{cventries}
+\clearpage
+\cvsection{Experience (continued)}
+\begin{cventries}
+
+\cventry
+  {Data Engineer II}
+  {Honestbee}
+  {https://www.linkedin.com/company/honestbee}
+  {Singapore; Bangalore, India}
+  {Jun 2018 -- Mar 2019}
+  {\begin{cvitems}
+    \item {Built ETL pipelines using Airflow, Spark, AWS Glue, and \textbf{Redshift}, including a custom Airflow operator for AWS Glue jobs.}
+    \item {Worked with data scientists to schedule model runs in Airflow and deploy model-serving APIs on Kubernetes.}
+  \end{cvitems}}
+
+\cventry
+  {Senior Software Engineer (2 yrs)}
+  {Zivame · 2 yrs 9 mos}
+  {https://www.linkedin.com/company/zivame-com}
+  {Bangalore, India}
+  {Aug 2015 -- May 2018}
+  {\begin{cvitems}
+    \item {Developed \textbf{Spark-based product recommendations} using customer preferences and behavior.}
+    \item {Led the product-search migration from Solr to \textbf{Elasticsearch}; implemented Nginx caching to improve website performance.}
+    \item {Built product discovery features and supporting \textbf{Java APIs} for filtering, sorting, search, and autocomplete; centralized service logs and analytics with the \textbf{ELK stack}.}
+  \end{cvitems}}
+
+\cventry
+  {Software Engineer}
+  {Kore AI}
+  {https://www.linkedin.com/company/kore-inc}
+  {Hyderabad, India}
+  {Sep 2014 -- Jul 2015}
+  {\begin{cvitems}
+    \item {Developed Node.js backend APIs.}
+  \end{cvitems}}
+
+\end{cventries}

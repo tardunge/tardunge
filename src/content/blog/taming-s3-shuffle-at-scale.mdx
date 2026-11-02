@@ -14,9 +14,11 @@ status: "published"
 import { Image } from 'astro:assets';
 import heroDiagram from '../../assets/blog/taming-s3-shuffle.png';
 
-[Part 1](/blog/spark-on-spot-with-s3-shuffle) described how S3 shuffle decouples shuffle storage from ephemeral compute, making 100% spot executors practical. Shuffle data survives node death, Karpenter provisions replacements in ~30 seconds, and compute costs fall by 70-85%.
+[Part 1](/blog/spark-on-spot-with-s3-shuffle) described how S3 shuffle decouples shuffle storage from ephemeral compute, making 100% spot executors practical. Shuffle data survives node death and Karpenter provisions replacements in ~30 seconds. Its 70–85% spot-pricing example is illustrative, not the measured production outcome.
 
 At thousands of map tasks and high executor concurrency, three new problems emerged: an S3 request explosion from the per-mapper file design, S3 prefix rate limiting, and threading edge cases that caused executor hangs. Configuration solved the first two. The third required production-hardening patches to the plugin.
+
+Our team's production deployment reduced **Spark compute costs by 90%**, with individual production jobs processing **10 TB+ of input per run**. That is the measured compute outcome of the deployment, not a reduction in total infrastructure costs or a result attributed to the plugin patches alone.
 
 <Image src={heroDiagram} alt="Diagram showing S3 shuffle problems on the left with corresponding outcomes on the right: config-level fixes for GET explosion and prefix throttling, and plugin patches for threading deadlocks" width={1020} />
 

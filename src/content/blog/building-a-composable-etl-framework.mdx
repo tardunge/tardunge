@@ -16,7 +16,7 @@ import heroDiagram from '../../assets/blog/composable-etl-framework.png';
 
 Most data teams hit the same problem eventually: every pipeline is written differently. The boilerplate — Spark session setup, Iceberg catalog registration, S3A client tuning, shuffle configuration — gets repeated in every project. New pipelines start as copies of old ones. Bugs in shared patterns have to be fixed everywhere individually.
 
-The resulting framework standardizes infrastructure without constraining business logic.
+The resulting framework standardizes infrastructure without constraining business logic. In our team's production use, it reduced **total code per comparable pipeline by 75%**.
 
 <Image src={heroDiagram} alt="ComposableETL pipeline diagram showing Extract stage flowing through three removable POST_EXTRACT hook cards (DeduplicationMixin priority 5, CleaningMixin priority 10, StateCodeMixin priority 20) into Compact stage, with ETLContext carrying named DataFrames between stages and YAML Config feeding infrastructure settings" width={1020} />
 

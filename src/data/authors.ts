@@ -16,7 +16,7 @@ export interface AuthorInfo {
 export const authors: Record<string, AuthorInfo> = {
   'Manoj Babu Katragadda': {
     name: 'Manoj Babu Katragadda',
-    role: 'Principal Platform Engineer · Consultant',
+    role: 'Principal Engineer · Data Platforms & Distributed Systems',
     initials: 'MK',
     avatar: manojAvatar,
     socials: {

@@ -1,6 +1,6 @@
 ---
 title: "Spark on Spot with S3 Shuffle"
-description: "How S3 shuffle supports Spark executors on 100% spot capacity with Karpenter while cutting compute costs 70-85%."
+description: "Running Spark executors on spot with S3 shuffle and Karpenter: a measured 90% reduction in Spark compute costs in our team's production deployment."
 pubDate: "2026-03-25"
 authors:
   - "Manoj Babu Katragadda"
@@ -20,13 +20,15 @@ Spark executors can run 100% on spot when shuffle data is externalized to S3. A 
 
 The architecture combines the S3 shuffle plugin with Karpenter capacity provisioning and removes an unnecessary AZ constraint to reach a deeper spot capacity pool.
 
+Our team's production deployment reduced **Spark compute costs by 90%**, with individual production jobs processing **10 TB+ of input per run**. This measured outcome covers Spark compute, not total infrastructure costs.
+
 <Image src={archDiagram} alt="Architecture diagram showing Airflow triggering Spark Operator, which creates a Driver Pod on on-demand instances and Executor Pods on 100% spot instances. Shuffle data flows through S3 (not between executors), with callouts for no cross-AZ traffic, shuffle data surviving node death, and Karpenter provisioning replacements in ~30 seconds." width={1020} />
 
 ## Why Spot Matters
 
 Spark ETLs are compute-heavy, bursty workloads. A daily pipeline might need 50 executors for two hours, then nothing until tomorrow. That's exactly the workload profile spot instances are designed for.
 
-The savings are significant. For example, a job running 50 r6i.4xlarge executors for two hours costs ~$100 on-demand (r6i.4xlarge is ~$1.008/hr in us-west-2). The same job on spot typically costs $15–30 — spot pricing for that instance runs $0.15–0.30/hr. That is a 70–85% reduction in compute spend for a single run.
+For an illustrative pricing comparison, a job running 50 r6i.4xlarge executors for two hours costs ~$100 on-demand (r6i.4xlarge is ~$1.008/hr in us-west-2). At spot prices of $0.15–0.30/hr, the same executor-hours cost $15–30 — a 70–85% reduction in compute spend for a single run. This pricing example is separate from the measured 90% Spark compute cost reduction in our production deployment.
 
 But with local-disk shuffle, spot is risky. Spark's default `SortShuffleManager` writes shuffle output to the executor's local disk. If that executor gets reclaimed, the shuffle data is gone. Spark's only option is to re-run the map tasks that produced it — which means re-reading input data, re-sorting, and re-writing. For a stage with thousands of map tasks, that can mean recomputing hours of work.
 

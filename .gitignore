@@ -2,3 +2,20 @@ node_modules/
 dist/
 .astro/
 .DS_Store
+
+# Resume intermediates stay private; only public/ contains the published PDF.
+resume/build/
+public/manoj-babu-katragadda-resume.pdf.??????
+
+# Local environment and direnv state
+.env
+.env.*
+!.env.example
+.envrc
+.direnv/
+
+# Package-manager debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*

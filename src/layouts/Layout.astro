@@ -55,7 +55,7 @@ const imageURL = resolvedImage ? new URL(resolvedImage, Astro.site) : undefined;
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     {imageURL && <meta name="twitter:image" content={imageURL} />}
-    <title>tardunge</title>
+    <title>{title}</title>
     <script is:inline>
       const savedTheme = localStorage.getItem('theme');
       const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
